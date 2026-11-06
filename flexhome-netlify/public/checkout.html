@@ -1,0 +1,1527 @@
+<!DOCTYPE html><html lang="es-AR"><head>
+<script src="/js/site-utils.js"></script>
+<script src="/js/funnel-events.js"></script>
+<script>window.addEventListener('load',function(){try{window.trackFunnelEventOnce&&window.trackFunnelEventOnce('checkout_started');}catch(e){}});</script>
+  <!-- Clip: abre DNS+TLS por adelantado con los 4 dominios del flujo de pago (form de tarjeta y reto 3DS). -->
+<link rel="preconnect" href="https://sdk.clip.mx" crossorigin />
+<link rel="preconnect" href="https://tools.clip.mx" crossorigin />
+<link rel="preconnect" href="https://api.payclip.com" crossorigin />
+<link rel="preconnect" href="https://3ds.payclip.com" crossorigin />
+<!-- Clip Checkout Transparente SDK (tokeniza la tarjeta en un iframe, sin redirect) -->
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pago · TTK Shop Argentina</title>
+<link rel="stylesheet" href="css/tt-style.css?v=20260728b">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" />
+<style>
+  /* ===== payment method cards (inline, TikTok palette) ===== */
+  .ck-pay-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #ececee;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+  .ck-pay-option:last-child { margin-bottom: 0; }
+  .ck-pay-option.active {
+    border-color: var(--red);
+    background: #fff5f7;
+  }
+  .ck-pay-option:not(.active):hover { border-color: #c0c4ce; }
+  .ck-pay-radio {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid #cfd0d4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ck-pay-option.active .ck-pay-radio { border-color: var(--red); }
+  .ck-pay-radio__dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--red);
+    display: none;
+  }
+  .ck-pay-option.active .ck-pay-radio__dot { display: block; }
+  .ck-pay-option__info { flex: 1; min-width: 0; }
+  .ck-pay-option__title { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .ck-pay-option__sub { font-size: 12px; color: var(--ink-3); }
+  .ck-pay-option__logos {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ===== card form ===== */
+  .ck-card-form { display: none; margin-top: 14px; }
+  .ck-card-form.show { display: block; }
+  .ck-card-form .field input { letter-spacing: .3px; }
+  .ck-card-input-icon { position: relative; }
+  .ck-card-input-icon .icon {
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--ink-3); pointer-events: none;
+  }
+  .ck-card-input-icon input { padding-left: 40px; }
+  .ck-card-input-icon .icon-right {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--ink-3); pointer-events: none;
+  }
+  select.ck-cuotas {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23687083' stroke-width='2.5'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  /* ===== transfer info panel ===== */
+  .ck-transfer-panel { display: none; margin-top: 14px; }
+  .ck-transfer-panel.show { display: block; }
+  .ck-transfer-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    background: linear-gradient(180deg, #f2fbf6, #e9f9f0);
+    border: 1px solid rgba(27,166,114,0.28);
+    border-radius: 12px;
+    padding: 13px 14px;
+    color: var(--ink);
+  }
+  .ck-transfer-info__ic {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 7px rgba(27,166,114,0.4);
+  }
+  .ck-transfer-info__ic svg { width: 15px; height: 15px; color: #fff; }
+  .ck-transfer-info__txt strong {
+    display: block;
+    font-size: 13px; font-weight: 800;
+    color: #12694a; margin-bottom: 2px;
+    letter-spacing: -0.1px;
+  }
+  .ck-transfer-info__txt p {
+    font-size: 12px; line-height: 1.5; color: var(--ink-2);
+  }
+
+  /* ===== CTA buttons (red TikTok) ===== */
+  .ck-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--red);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .ck-btn:hover { filter: brightness(.95); }
+  .ck-btn:active { transform: scale(0.98); }
+  .ck-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .ck-btn .spin {
+    width: 16px; height: 16px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: ckSpin 0.7s linear infinite;
+  }
+  @keyframes ckSpin { to { transform: rotate(360deg); } }
+
+  /* ===== field errors ===== */
+  .field-error {
+    font-size: 12px;
+    color: var(--red);
+    margin-top: 4px;
+    display: none;
+  }
+  .field-error.show { display: block; }
+  .field input.has-error,
+  .field select.has-error {
+    border-color: var(--red) !important;
+  }
+
+  /* ===== OTP Overlay ===== */
+  .otp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+  .otp-overlay.show { display: flex; }
+  .otp-box {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 440px;
+    width: 100%;
+    padding: 32px 28px;
+    position: relative;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    animation: otpSlideUp 0.3s ease-out;
+  }
+  @keyframes otpSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .otp-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+    padding: 4px;
+  }
+  .otp-close:disabled { cursor: not-allowed; }
+  .otp-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .otp-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    text-align: center;
+    margin-bottom: 8px;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-desc {
+    font-size: 14px;
+    color: #666;
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 24px;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-info {
+    background: #f0f7ff;
+    border: 1px solid #d0e3ff;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: #1a56db;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-info svg { flex-shrink: 0; margin-top: 2px; }
+  .otp-info p { margin: 0; }
+  .otp-info .bold { font-weight: 600; }
+  .otp-info .sub { color: #4a7cc9; font-size: 12px; margin-top: 4px; }
+  .otp-info strong { color: #1a56db; }
+  .otp-input-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 10px;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-input {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-align: center;
+    text-transform: uppercase;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+    color: #1a1a1a;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.15); }
+  .otp-input.has-val { border-color: #1a73e8; }
+  .otp-input.has-error { border-color: #ef4444; }
+  .otp-input:disabled { background: #f9fafb; }
+  .otp-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 16px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #dc2626;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-error.show { display: flex; }
+  .otp-verify-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    background: #a0c4f1;
+    border: none;
+    border-radius: 12px;
+    cursor: not-allowed;
+    transition: background 0.2s;
+    margin-top: 16px;
+    font-family: 'Nunito', sans-serif;
+  }
+  .otp-verify-btn.enabled { background: #1a73e8; cursor: pointer; }
+  .otp-verify-btn:disabled { opacity: 0.6; }
+  .otp-loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    margin-top: 16px;
+  }
+  .otp-loading.show { display: flex; }
+  .otp-loading .spin {
+    width: 20px; height: 20px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #1a73e8;
+    border-radius: 50%;
+    animation: ckSpin 0.7s linear infinite;
+  }
+  .otp-loading span { font-size: 14px; color: #666; font-family: 'Nunito', sans-serif; }
+  .otp-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #aaa;
+    font-family: 'Nunito', sans-serif;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ===== header ===== -->
+  <header class="app-header center">
+    <a aria-label='Atrás' class='icon-btn back' href='/' id='back-btn'>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    </a>
+    <img class="ttl-logo" src="/__l5e/assets-v1/f36be994-a646-4580-85f4-787ec59b4939/sodimac-checkout.png" alt="SODIMAC" style="height:36px;max-width:210px;width:auto;display:block;margin:0 auto;object-fit:contain;">
+  </header>
+
+  <!-- ===== gift bonus banner (por producto: p.giftBonus) ===== -->
+  <style>
+    .gift-banner{margin:12px 16px;padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,#fff5f7,#ffeaf0);border:1px solid #ffd0dc;display:flex;align-items:center;gap:12px;box-shadow:0 3px 12px rgba(254,44,85,.10);}
+    .gift-img{width:64px;height:64px;border-radius:11px;object-fit:contain;flex:0 0 auto;background:#fff;border:1px solid #ffd9e1;padding:5px;display:none;}
+    .gift-banner.has-img .gift-img{display:block;}
+    .gift-text{flex:1;min-width:0;text-align:center;}
+    .gift-banner.has-img .gift-text{text-align:left;}
+    .gift-line1{font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;color:#c81e43;}
+    .gift-banner.has-img .gift-line1{justify-content:flex-start;}
+    .gift-line2{font-size:14.5px;font-weight:800;margin-top:4px;color:#161820;line-height:1.3;}
+    .gift-line2 b{color:#e9202f;}
+    .gift-clock{display:inline-block;background:#e9202f;color:#fff;border-radius:999px;padding:2px 9px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.5px;font-size:12px;}
+  </style>
+  <div class="gift-banner" id="giftBanner" style="display:none">
+    <img class="gift-img" id="giftImg" alt="Regalo">
+    <div class="gift-text">
+      <div class="gift-line1">🎁 Paga en los próximos <span class="gift-clock" id="giftClock">15:00</span></div>
+      <div class="gift-line2">y recibe <b id="giftName">GRATIS</b></div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      var KEY='gift_bonus_deadline', DUR=14*60*1000+23*1000;
+      function fresh(){ return Date.now()+DUR; }
+      function load(){ var d=parseInt(localStorage.getItem(KEY)||'',10); if(!d||isNaN(d)||d<=Date.now()){ d=fresh(); try{localStorage.setItem(KEY,d);}catch(e){} } return d; }
+      var dl=load(), el=document.getElementById('giftClock');
+      function pad(n){ return (n<10?'0':'')+n; }
+      function tick(){ var t=Math.max(0,Math.floor((dl-Date.now())/1000)), m=Math.floor(t/60), s=t%60; if(el) el.textContent=pad(m)+':'+pad(s); if(t<=0){ dl=fresh(); try{localStorage.setItem(KEY,dl);}catch(e){} } }
+      tick(); setInterval(tick,1000);
+    })();
+  </script>
+
+  <div class="divider"></div>
+
+  <form id="f" novalidate>
+
+  <!-- ===== contact info ===== -->
+  <section class="co-section">
+    <h3 style="display:flex;align-items:center;gap:8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Datos de contacto
+    </h3>
+
+    <div class="addr-2col">
+      <div class="addr-field">
+        <span class="lab">Nombre</span>
+        <input id="f-nombre" name="firstname" placeholder="Nombre" required>
+      </div>
+      <div class="addr-field">
+        <span class="lab">Apellido</span>
+        <input id="f-apellido" name="lastname" placeholder="Apellido" required>
+      </div>
+    </div>
+
+    <div class="addr-field">
+      <span class="lab">Correo electrónico</span>
+      <input id="f-email" name="email" type="email" inputmode="email" placeholder="Correo electrónico" required>
+    </div>
+
+    <div class="addr-field">
+      <span class="lab">Teléfono</span>
+      <input id="f-telefono" name="phone" type="tel" inputmode="tel" placeholder="Número de teléfono (+54)" required>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ===== shipping address ===== -->
+  <section class="co-section">
+    <h3 style="display:flex;align-items:center;gap:8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+      Dirección de envío
+    </h3>
+
+    <div class="addr-field">
+      <span class="lab">Dirección</span>
+      <input id="f-direccion" name="address" placeholder="Calle y número" required>
+    </div>
+
+    <div class="addr-field">
+      <input id="f-colonia" name="apartment" placeholder="Piso, depto, referencias (opcional)">
+    </div>
+
+    <div class="addr-2col">
+      <div class="addr-field">
+        <span class="lab">Localidad</span>
+        <input id="f-ciudad" name="city" placeholder="Localidad" required>
+      </div>
+      <div class="addr-field sel">
+        <span class="lab">Provincia</span>
+        <select id="f-estado" name="region" required onchange="this.classList.toggle('filled', !!this.value)">
+          <option value="" disabled selected>Provincia</option>
+          <option>Buenos Aires</option><option>Ciudad Autónoma de Buenos Aires</option><option>Catamarca</option>
+          <option>Chaco</option><option>Chubut</option><option>Córdoba</option>
+          <option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option>
+          <option>Jujuy</option><option>La Pampa</option><option>La Rioja</option>
+          <option>Mendoza</option><option>Misiones</option><option>Neuquén</option>
+          <option>Río Negro</option><option>Salta</option><option>San Juan</option>
+          <option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option>
+          <option>Santiago del Estero</option><option>Tierra del Fuego</option><option>Tucumán</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="addr-2col">
+      <div class="addr-field">
+        <span class="lab">Código postal</span>
+        <input id="f-codigoPostal" name="zip" placeholder="Código postal" required>
+      </div>
+      <div class="addr-field sel">
+        <span class="lab">País</span>
+        <select name="country" class="filled" required onchange="this.classList.toggle('filled', !!this.value)">
+          <option value="Argentina" data-cc="AR" selected>Argentina</option>
+          <option value="Estados Unidos" data-cc="US">Estados Unidos</option>
+          <option value="Guatemala" data-cc="GT">Guatemala</option>
+          <option value="Colombia" data-cc="CO">Colombia</option>
+          <option value="Argentina" data-cc="AR">Argentina</option>
+          <option value="Chile" data-cc="CL">Chile</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="addr-toggle">
+      <span class="lab">Establecer como predeterminada</span>
+      <label class="switch">
+        <input type="checkbox" name="set_default" checked>
+        <span class="track"></span><span class="knob"></span>
+      </label>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ===== shipping method ===== -->
+  <section class="co-section">
+    <div class="co-head"><h3>Método de envío</h3></div>
+    <style>
+      .ck-ship-price{font-size:14px;font-weight:800;color:var(--ink);flex-shrink:0;margin-left:auto;padding-left:8px;}
+      .ck-ship-price.teal{color:var(--teal);}
+    </style>
+    <div id="ship-opts">
+      <div class="ck-pay-option active" data-ship="0">
+        <div class="ck-pay-radio"><div class="ck-pay-radio__dot"></div></div>
+        <div class="ck-pay-option__info">
+          <div class="ck-pay-option__title">Envío estándar</div>
+          <div class="ck-pay-option__sub" id="co-delivery">Entrega estimada: 3-5 días</div>
+        </div>
+        <div class="ck-ship-price teal">Gratis</div>
+      </div>
+      <div class="ck-pay-option" data-ship="3900">
+        <div class="ck-pay-radio"><div class="ck-pay-radio__dot"></div></div>
+        <div class="ck-pay-option__info">
+          <div class="ck-pay-option__title">Recíbelo mañana ⚡</div>
+          <div class="ck-pay-option__sub">Envío express prioritario · entrega en 24 h</div>
+        </div>
+        <div class="ck-ship-price">+$3.900 ARS</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ===== payment method ===== -->
+  <section class="co-section">
+    <div class="co-head">
+      <h3>Método de pago</h3>
+    </div>
+
+    <style>
+      .ck-pay-option__info{min-width:0;}
+      .ck-pay-option__title{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .ck-pay-option__sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .ck-pay-logos{display:flex;align-items:center;gap:5px;margin-left:auto;padding-left:8px;margin-right:10px;flex-shrink:0;}
+      .ck-pay-logos img{display:block;height:17px;width:auto;}
+      .ck-pay-logos svg{display:block;height:28px;width:auto;} #pay-opt-card .ck-pay-logos svg{height:32px;}
+      #btn-transfer{display:flex;align-items:center;justify-content:center;gap:9px;}
+      #btn-transfer svg{width:20px;height:20px;flex:0 0 auto;}
+
+      /* ===== Badge MSI — incentivo pago con tarjeta (solo #pay-opt-card) ===== */
+      .ck-msi{display:block;margin-top:5px;max-width:100%;overflow:hidden;animation:ck-msi-in .42s cubic-bezier(.22,.61,.36,1) both;}
+      .ck-msi__pill{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;box-sizing:border-box;padding:3px 10px 3px 3px;border-radius:999px;background:rgba(254,44,85,.07);border:1px solid rgba(254,44,85,.16);-webkit-user-select:none;user-select:none;}
+      .ck-msi__tag{position:relative;flex:0 0 auto;display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:linear-gradient(135deg,#ff5075 0%,#e9202f 55%,#e51d49 100%);color:#fff;font-family:inherit;font-weight:800;font-size:10.5px;line-height:1;letter-spacing:.2px;box-shadow:0 1px 2px rgba(254,44,85,.35),inset 0 1px 0 rgba(255,255,255,.28);overflow:hidden;}
+      .ck-msi__txt{flex:0 1 auto;min-width:0;font-weight:800;font-size:11px;line-height:1.1;letter-spacing:.1px;color:var(--red,#e9202f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .ck-msi__txt b{font-weight:800;}
+      .ck-msi__tag::after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-18deg);animation:ck-msi-shine 4.5s ease-in-out 1s infinite;}
+      #pay-opt-card.active .ck-msi__pill{background:rgba(254,44,85,.12);border-color:rgba(254,44,85,.30);}
+      @keyframes ck-msi-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes ck-msi-shine{0%,55%{left:-60%}85%,100%{left:130%}}
+      @media (prefers-reduced-motion:reduce){.ck-msi{animation:none}.ck-msi__tag::after{animation:none;display:none}}
+    </style>
+    <!-- Transferencia -->
+    <div class="ck-pay-option active" id="pay-opt-transfer" data-method="spei">
+      <div class="ck-pay-radio"><div class="ck-pay-radio__dot"></div></div>
+      <div class="ck-pay-option__info">
+        <div class="ck-pay-option__title">Transferencia bancaria</div>
+        <div class="ck-pay-option__sub">CVU o Alias</div>
+      </div>
+      <div class="ck-pay-logos"></div>
+    </div>
+
+    <!-- Tarjeta (Clip Checkout Transparente) -->
+    <div class="ck-pay-option" id="pay-opt-card" data-method="card" style="display:none">
+      <div class="ck-pay-radio"><div class="ck-pay-radio__dot"></div></div>
+      <div class="ck-pay-option__info">
+        <div class="ck-pay-option__title">Tarjeta de Débito / Crédito</div>
+        <div class="ck-pay-option__sub">Visa, Mastercard, AMEX</div>
+      </div>
+      <div class="ck-pay-logos">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#e9202f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Tarjeta"><rect x="6" y="2.4" width="16.5" height="11.5" rx="2" transform="rotate(-14 14.25 8.15)"></rect><rect x="1.5" y="8.5" width="16.5" height="11.5" rx="2" fill="#fff"></rect><line x1="1.5" y1="11.2" x2="18" y2="11.2"></line><line x1="1.5" y1="12.9" x2="18" y2="12.9"></line><rect x="12" y="15.7" width="4.3" height="2.8" rx="0.4"></rect></svg>
+      </div>
+    </div>
+
+    <!-- Clip Checkout Transparente: formulario de tarjeta (iframe seguro, sin salir del sitio) -->
+    <style>
+      #clip-card-wrap{margin-top:12px;}
+      #clip-card{min-height:220px;border:1px solid #ececee;border-radius:12px;padding:6px;background:#fff;}
+      .clip-error{margin-top:10px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;}
+      .clip-secure{margin-top:8px;font-size:11.5px;color:var(--ink-3);display:flex;align-items:center;gap:6px;justify-content:center;}
+      .clip-secure svg{width:13px;height:13px;flex:0 0 auto;}
+    </style>
+
+
+    <div class="ck-transfer-info">
+      <span class="ck-transfer-info__ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      <div class="ck-transfer-info__txt">
+        <strong>Transferencia bancaria</strong>
+        <p>Al confirmar te mostramos el Alias y el CVU. Tu pedido se procesa en cuanto verifiquemos el pago.</p>
+      </div>
+    </div>
+    <button type="submit" class="ck-btn" id="btn-transfer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle><path d="M6 12h.01"></path><path d="M18 12h.01"></path></svg>
+      Pagar con depósito
+    </button>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ===== shipping method / item ===== -->
+  <section class="co-section">
+    <div class="merchant">
+      <span class="big-av" id="co-avatar"></span>
+      <span class="nm" id="co-merchant">TikTok Shop</span>
+    </div>
+    <div id="ck-lines"><!-- líneas del carrito (render dinámico) --></div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ===== order summary ===== -->
+  <section class="co-section">
+    <h3>Resumen del pedido</h3>
+    <div class="sum-row deal">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13 21 3 11V3h8z"></path><circle cx="7.5" cy="7.5" r="1.2"></circle></svg>
+        Ofertas
+      </span>
+      <span class="chev"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg></span>
+    </div>
+    <div class="sum-row"><span class="muted">Subtotal</span><span id="sum-sub">$219 ARS</span></div>
+    <div class="sum-row">
+      <span class="muted" style="display:flex;align-items:center;gap:5px;">Envío
+        <svg class="ico-info" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+      </span>
+      <span class="teal" style="font-weight:600;" id="sum-ship">Gratis</span>
+    </div>
+    <div class="sum-row" id="sum-protect-row" style="display:none;"><span class="muted">Protección de envío</span><span id="sum-protect">$0 ARS</span></div>
+    <div class="sum-total"><span>Total</span><span id="sum-total">$219 ARS</span></div>
+  </section>
+
+  <!-- ===== reassurance ===== -->
+  <p class="policy">🔒 <b>Tu pago está 100% protegido.</b> Tus datos se transmiten cifrados y se procesan dentro de un entorno seguro. Compra con total confianza: cada pedido está respaldado por una <b>garantía de satisfacción de 30 días</b>.</p>
+
+  <!-- ===== bottom bar ===== -->
+  <div class="bottom-bar checkout">
+    <div class="bb-total">
+      <div class="lab">Total (<span id="bb-count">1</span> producto)</div>
+      <div class="val" id="bb-total">$219 ARS</div>
+    </div>
+    <button type="submit" class="bb-btn" id="btn-proceder"
+      style="border:0;border-radius:999px;padding:14px 22px;font-size:16px;font-weight:800;color:#fff;background:#e9202f;box-shadow:0 8px 20px rgba(233,32,47,.28);cursor:pointer;">
+      Proceder al pago
+    </button>
+  </div>
+
+
+  </form>
+
+</div>
+
+<script src="products.js"></script>
+<script src="/js/cart.js"></script>
+<script>
+
+    /* ---- Supabase — PEDIDO INICIAL (pendente) no submit del checkout ---- */
+    var SB_URL = 'https://oorzpkzwjtsjsvvjqqih.supabase.co';
+    var SB_KEY = 'sb_publishable_8h76Y4nOvNs9sq8O35EtDQ_PQ0vFxY4';
+    var SB_SITE = 'ttshop-arg';
+    async function sendSupabasePending() {
+      try {
+        var qp = new URLSearchParams(location.search);
+        function u(k){ return qp.get(k) || null; }
+        var src = u('utm_source');
+        /* dedup: si esa origen ya tiene CUALQUIER pedido, no crear otro pendiente */
+        if (src) {
+          try {
+            var chk = await fetch(SB_URL + '/rest/v1/rpc/origin_has_order', {
+              method: 'POST',
+              headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ p_src: src })
+            });
+            if (chk.ok && (await chk.json()) === true) return;
+          } catch (e) {}
+        }
+        function g(id){ var e = document.getElementById(id); return e ? ((e.value || '').trim() || null) : null; }
+        var col = (typeof _color !== 'undefined') ? _color : ((typeof COLOR !== 'undefined') ? COLOR : null);
+        fetch(SB_URL + '/rest/v1/orders', {
+          method: 'POST', keepalive: true,
+          headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            site: SB_SITE, status: 'pendente',
+            nombre: ((g('f-nombre') || '') + ' ' + (g('f-apellido') || '')).trim() || null,
+            telefono: g('f-telefono'), email: g('f-email'), direccion: g('f-direccion'),
+            colonia: g('f-colonia'), ciudad: g('f-ciudad'), estado: g('f-estado'), codigo_postal: g('f-codigoPostal'),
+            metodo_pago: (typeof metodoPago !== 'undefined' ? metodoPago : 'spei'), producto: (typeof PRODUCT_NAME !== 'undefined' ? PRODUCT_NAME : null), color: col,
+            total: Number(typeof PRICE !== 'undefined' ? PRICE : 0) || 0, attempt_number: 'inicial',
+            utm_source: src, utm_medium: u('utm_medium'), utm_campaign: u('utm_campaign'),
+            utm_content: u('utm_content'), utm_term: u('utm_term'),
+            ttclid: u('ttclid'), fbclid: u('fbclid'), gclid: u('gclid'),
+            referrer: document.referrer || null, landing_url: location.href
+          })
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+  function money(n){ return '$' + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ARS'; }
+
+  /* ============ CHECKOUT DIRIGIDO POR EL CARRITO (multi-ítem) ============ */
+  var _params = new URLSearchParams(location.search);
+
+  /* Backward-compat: link directo/anuncio con ?p=slug y carrito vacío → sembrar 1 ítem */
+  (function seedFromUrl(){
+    if (!window.Cart || Cart.items().length) return;
+    var slug = _params.get('p'); if (!slug) return;
+    var P = (window.PRODUCTS || {})[slug]; if (!P) return;
+    var color = _params.get('color') || P.variant;
+    var bogo = _params.get('bogo') === '1' && !!P.bogo;
+    var color2 = _params.get('color2');
+    var offer = (P.offers || []).filter(function(o){ return String(o.id) === String(_params.get('offer')); })[0];
+    var g0 = (P.gallery && P.gallery[0] && P.gallery[0].src) || '';
+    if (bogo) {
+      var c1 = (P.colors || []).filter(function(c){ return c.name === color; })[0];
+      Cart.add({ slug: slug, offer: 'bogo', color: color + '+' + (color2 || color), name: (P.shortName || P.title) + ' — Compre 1 Lleve 2', variant: '🎁 2 uds: ' + color + ' + ' + (color2 || color), img: (c1 && c1.img) || g0, price: P.price, was: P.was || 0, qty: 1 });
+    } else if (offer) {
+      Cart.add({ slug: slug, offer: String(offer.id), color: color, name: offer.name, variant: (P.colors && P.colors.length ? color : ''), img: (offer.imgs && offer.imgs[color]) || offer.img || g0, price: offer.price, was: offer.was || 0, qty: 1 });
+    } else {
+      var cobj = (P.colors || []).filter(function(c){ return c.name === color; })[0];
+      Cart.add({ slug: slug, offer: '', color: color, name: P.shortName || P.title, variant: (P.colors && P.colors.length ? color : ''), img: (cobj && cobj.img) || g0, price: (cobj && cobj.price != null) ? cobj.price : P.price, was: ((cobj && cobj.was != null) ? cobj.was : P.was) || 0, qty: 1 });
+    }
+  })();
+
+  function cartItems(){ return window.Cart ? Cart.items() : []; }
+  var SHIP = 0;
+  var PRICE = window.Cart ? Cart.subtotal() : 0;   /* subtotal del carrito = monto a cobrar */
+  var count = window.Cart ? Cart.count() : 0;
+  var _first = cartItems()[0] || {};
+  var SLUG = _first.slug || '';
+  var COLOR = _first.color || '';
+  var PRODUCT_IMG = _first.img || '';
+  var PROD = (window.PRODUCTS || {})[SLUG] || {};    /* 1er producto: usado por el banner de bono */
+  function productName(){ return cartItems().map(function(i){ return (i.name || 'Producto') + ' x' + (i.qty || 1); }).join(', '); }
+  var PRODUCT_NAME = productName();
+
+  function renderLines(){
+    var box = document.getElementById('ck-lines'); if (!box) return;
+    var items = cartItems();
+    if (!items.length) { box.innerHTML = '<div style="padding:18px 8px;color:#9ca3af;font-size:14px;text-align:center;">Tu carrito está vacío. <a href="/" style="color:#e9202f;font-weight:700;text-decoration:none;">Ver productos</a></div>'; return; }
+    box.innerHTML = items.map(function(it){
+      var was = it.was ? ' <s>' + money(it.was) + '</s>' : '';
+      return '<div class="line-item">' +
+        (it.img ? '<img class="thumb" src="' + it.img + '" alt="">' : '<span class="thumb"></span>') +
+        '<div class="li-main">' +
+          '<div class="li-name">' + (it.name || 'Producto') + '</div>' +
+          (it.variant ? '<div class="li-variant">' + it.variant + '</div>' : '') +
+          '<div class="li-bottom">' +
+            '<div class="li-price">' + money(it.price) + was + '</div>' +
+            '<div class="stepper">' +
+              '<button type="button" class="is-off" data-act="dec" data-key="' + it.key + '" aria-label="Disminuir">−</button>' +
+              '<span class="qv">' + (it.qty || 1) + '</span>' +
+              '<button type="button" class="is-off" data-act="inc" data-key="' + it.key + '" aria-label="Aumentar">+</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function protectAmt(){ try { if (typeof metodoPago !== 'undefined' && metodoPago === 'card') return 0; return (PRICE > 0 && localStorage.getItem('ttk-protect') !== '0') ? 3000 : 0; } catch(e){ return 0; } }
+  function recalc(){
+    PRICE = window.Cart ? Cart.subtotal() : PRICE;
+    count = window.Cart ? Cart.count() : count;
+    PRODUCT_NAME = productName();
+    var PROT = protectAmt();
+    var total = PRICE + SHIP + PROT;
+    var s;
+    if ((s = document.getElementById('sum-sub'))) s.textContent = money(PRICE);
+    if ((s = document.getElementById('sum-ship'))) { s.textContent = SHIP > 0 ? money(SHIP) : 'Gratis'; s.style.color = SHIP > 0 ? 'var(--ink,#161820)' : ''; }
+    if ((s = document.getElementById('sum-protect-row'))) s.style.display = PROT > 0 ? 'flex' : 'none';
+    if ((s = document.getElementById('sum-protect'))) s.textContent = money(PROT);
+    if ((s = document.getElementById('sum-total'))) s.textContent = money(total);
+    if ((s = document.getElementById('bb-total'))) s.textContent = money(total);
+    if ((s = document.getElementById('bb-count'))) s.textContent = count;
+    if (typeof paintBtn === 'function' && !(typeof submitting !== 'undefined' && submitting)) paintBtn();
+  }
+
+  /* ---- opción de envío: express "recíbelo mañana" (+$50) o estándar (gratis) ---- */
+  (function () {
+    var box = document.getElementById('ship-opts'); if (!box) return;
+    box.addEventListener('click', function (e) {
+      var opt = e.target.closest('.ck-pay-option'); if (!opt) return;
+      SHIP = Number(opt.getAttribute('data-ship')) || 0;
+      [].forEach.call(box.querySelectorAll('.ck-pay-option'), function (o) { o.classList.toggle('active', o === opt); });
+      recalc();
+    });
+  })();
+
+  (function fillProduct(){
+    var av = document.getElementById('co-avatar'); if(av) av.textContent = 'TS';
+    var mc = document.getElementById('co-merchant'); if(mc) mc.textContent = 'TTK Shop Argentina';
+    var back = document.getElementById('back-btn'); if(back) back.href = (PROD && PROD.url) || '/';
+    document.title = 'Pago · TTK Shop Argentina';
+    renderLines();
+    recalc();
+  })();
+
+  /* steppers de línea (delegación) + sincroniza con el drawer del carrito */
+  (function(){
+    var box = document.getElementById('ck-lines'); if (!box) return;
+    box.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-act]'); if (!btn || !window.Cart) return;
+      var key = btn.getAttribute('data-key'), act = btn.getAttribute('data-act');
+      var items = Cart.items(), it = null;
+      for (var i = 0; i < items.length; i++) { if (items[i].key === key) { it = items[i]; break; } }
+      if (!it) return;
+      if (act === 'inc') Cart.setQty(key, (it.qty || 1) + 1);
+      else if (act === 'dec') Cart.setQty(key, (it.qty || 1) - 1);
+    });
+    if (window.Cart) Cart.onChange(function(){ renderLines(); recalc(); });
+  })();
+
+  /* dynamic delivery window */
+  (function(){
+    var el = document.getElementById('co-delivery');
+    if(!el) return;
+    var M = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    function plus(days){ var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + days); return d; }
+    function range(a, b){
+      return a.getMonth() === b.getMonth()
+        ? a.getDate() + ' - ' + b.getDate() + ' ' + M[b.getMonth()]
+        : a.getDate() + ' ' + M[a.getMonth()] + ' - ' + b.getDate() + ' ' + M[b.getMonth()];
+    }
+    el.textContent = 'Entrega estimada: ' + range(plus(3), plus(5));
+  })();
+
+  var metodoPago = 'spei';
+  /* Clip Checkout Transparente: tarjeta SIN redirect (SDK tokeniza + Netlify Function cobra). */
+  var CLIP_API_KEY = 'd94fef45-4e05-4452-9c98-8b9fdf33d01b'; /* API Key pública (solo tokeniza en el client) — DEBE ser idéntica a env CLIP_API_KEY (misma cuenta) */
+  var CARD_ENABLED = false; /* disponible para todos los productos */
+  /* Bonus banner por producto (checkout compartido): usa PROD.giftBonus + imagen opcional */
+  (function(){
+    var gb = document.getElementById('giftBanner');
+    if (!gb || !PROD.giftBonus) return;
+    var nm = document.getElementById('giftName'); if (nm) nm.textContent = 'GRATIS ' + PROD.giftBonus;
+    if (PROD.giftBonusImg) { var gi = document.getElementById('giftImg'); if (gi) { gi.src = PROD.giftBonusImg; gb.classList.add('has-img'); } }
+    gb.style.display = '';
+  })();
+
+  /* address validation (TikTok style) */
+  function fieldOf(el){ return el.closest('.addr-field') || el.closest('.field'); }
+  function clearErr(field){ if(!field) return; field.classList.remove('error'); var m = field.querySelector('.field-err'); if(m) m.remove(); }
+  function setErr(field, msg){
+    if(!field) return;
+    field.classList.add('error');
+    var m = field.querySelector('.field-err');
+    if(!m){ m = document.createElement('div'); m.className = 'field-err'; field.appendChild(m); }
+    m.textContent = msg;
+  }
+  function validateAddress(form){
+    var ok = true, first = null;
+    var els = form.querySelectorAll('.addr-field input[required], .addr-field select[required]');
+    [].forEach.call(els, function(el){
+      var field = fieldOf(el), val = (el.value || '').trim(), msg = '';
+      /* ID (INE/CURP) solo se exige/valida en el flujo TARJETA + Argentina (es lo único que va a Clip). SPEI y países sin INE/CURP quedan exentos. */
+      if((el.name === 'id_type' || el.name === 'id_number') && (metodoPago !== 'card' || (((form.querySelector('[name="country"]') || {}).value) !== 'Argentina'))) { clearErr(field); return; }
+      if(!val) msg = 'Completa este dato para continuar.';
+      else if(el.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) msg = 'Ingresa un correo electrónico válido.';
+      else if(el.name === 'phone' && val.replace(/\D/g,'').length < 10) msg = 'Ingresa un número de teléfono válido.';
+      else if(el.name === 'id_number' && !/^[A-Z0-9]{18}$/.test(val.replace(/[^A-Za-z0-9]/g,'').toUpperCase())) msg = 'Ingresa una INE o CURP válida (18 caracteres).';
+      if(msg){ ok = false; setErr(field, msg); if(!first) first = el; }
+      else clearErr(field);
+    });
+    if(first){ try { first.focus(); } catch(e){} var f = fieldOf(first); if(f) f.scrollIntoView({behavior:'smooth', block:'center'}); }
+    return ok;
+  }
+
+  /* clear address errors on input */
+  (function(){
+    var form = document.getElementById('f');
+    if(!form) return;
+    [].forEach.call(form.querySelectorAll('.addr-field input, .addr-field select'), function(el){
+      el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function(){ clearErr(fieldOf(el)); });
+    });
+  })();
+
+
+  /* ===== submit / pago ===== */
+  var submitting = false;
+  var btnTransfer = document.getElementById('btn-transfer');
+  var CARD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>';
+  var BANK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle><path d="M6 12h.01"></path><path d="M18 12h.01"></path></svg>';
+  function payLabel() { return metodoPago === 'card' ? 'Pagar con tarjeta' : 'Pagar con depósito'; }
+  function paintBtn() { if (btnTransfer) btnTransfer.innerHTML = (metodoPago === 'card' ? CARD_ICON : BANK_ICON) + ' ' + payLabel(); }
+
+  function setSubmitting(val, busyLabel) {
+    submitting = val;
+    if (!btnTransfer) return;
+    btnTransfer.disabled = val;
+    if (val) btnTransfer.innerHTML = '<span class="spin"></span> ' + (busyLabel || (metodoPago === 'card' ? 'Procesando pago...' : 'Procesando...'));
+    else paintBtn();
+  }
+
+  function buildOrderData() {
+    var _f = cartItems()[0] || {};
+    return {
+      nombre: ((document.getElementById('f-nombre').value || '') + ' ' + (document.getElementById('f-apellido').value || '')).trim(),
+      telefono: (document.getElementById('f-telefono').value || '').trim(),
+      email: (document.getElementById('f-email').value || '').trim(),
+      direccion: (document.getElementById('f-direccion').value || '').trim(),
+      ciudad: (document.getElementById('f-ciudad').value || '').trim(),
+      estado: (document.getElementById('f-estado').value || '').trim(),
+      codigoPostal: (document.getElementById('f-codigoPostal').value || '').trim(),
+      colonia: (document.getElementById('f-colonia').value || '').trim(),
+      nombrePila: (document.getElementById('f-nombre').value || '').trim(),
+      apellido: (document.getElementById('f-apellido').value || '').trim(),
+      idType: ((document.getElementById('f-idType')||{}).value || '').trim(),
+      idNumber: ((document.getElementById('f-idNumber')||{}).value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(),
+      producto: productName(), productoCorto: (_f.name || PROD.shortName || ''), slug: (_f.slug || SLUG), color: (_f.color || COLOR), imagen: (_f.img || PRODUCT_IMG),
+      total: (window.Cart ? Cart.subtotal() : PRICE) + SHIP + protectAmt(), metodoPago: metodoPago,
+      items: cartItems(),
+      bonus: (PROD && PROD.giftBonus) || '', bonusImg: (PROD && PROD.giftBonusImg) || '',
+      date: new Date().toISOString()
+    };
+  }
+  function showCardError(msg) {
+    var e = document.getElementById('clip-error');
+    if (e) { e.textContent = msg; e.style.display = 'block'; try { e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (x) {} }
+  }
+
+  /* ---- Clip Checkout Transparente: SDK + antifraude + MSI + 3DS ---- */
+  var clipCard = null, clipMounted = false, CLIP_SESSION_ID = null, _mountTries = 0;
+
+  /* IPv4 real del cliente para Clip (location.ip): Clip rechaza IPv6 y el móvil suele salir por
+     IPv6. Pedimos la IPv4 a un servicio IPv4-only. NO bloquea el checkout: si no llega a tiempo,
+     el pago se envía igual (el server omite location si no hay IPv4 válida). */
+  window.CLIENT_IPV4 = '';
+  (function () {
+    function set(ip) { ip = String(ip == null ? '' : ip).trim(); if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) window.CLIENT_IPV4 = ip; }
+    function ipify() { try { fetch('https://api.ipify.org?format=json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { if (!window.CLIENT_IPV4) set(j && j.ip); }).catch(function () {}); } catch (e) {} }
+    try {
+      fetch('https://ipv4.icanhazip.com', { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) { set(t); if (!window.CLIENT_IPV4) ipify(); }).catch(ipify);
+    } catch (e) { ipify(); }
+  })();
+
+  function ensureRiskScript() {
+    /* device fingerprint (antifraude): mismo uuid en el script y en prevention_data.session_id */
+    try {
+      if (!CLIP_SESSION_ID) {
+        CLIP_SESSION_ID = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+          : (Date.now() + '-' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2));
+      }
+      if (!document.getElementById('clip-risk-js')) {
+        var sc = document.createElement('script');
+        sc.id = 'clip-risk-js'; sc.async = true;
+        sc.src = 'https://tools.clip.mx/transparent/risk?session_id=' + encodeURIComponent(CLIP_SESSION_ID);
+        document.head.appendChild(sc);
+      }
+    } catch (e) {}
+  }
+
+  function mountClipCard() {
+    if (clipMounted) return;
+    try {
+      if (typeof ClipSDK === 'undefined') {
+        /* el SDK carga con defer: si el cliente elige tarjeta muy rápido aún no está listo.
+           Reintenta ~5s antes de dar error, en vez de mandarlo a recargar la página. */
+        if (_mountTries++ < 25) { setTimeout(mountClipCard, 200); return; }
+        showCardError('No se pudo cargar el pago con tarjeta. Recarga la página.'); return;
+      }
+      ensureRiskScript();
+      var clip = new ClipSDK(CLIP_API_KEY);
+      var opts = { theme: 'light', locale: 'es' };
+      if (Number(PRICE) >= 300) { opts.paymentAmount = Number(PRICE); opts.terms = { enabled: true }; } /* MSI (cuenta: hasta 6) */
+      clipCard = clip.element.create('Card', opts);
+      clipCard.mount('clip-card');
+      clipMounted = true;
+    } catch (err) { showCardError('No se pudo iniciar el pago con tarjeta.'); }
+  }
+
+  function declineMsg(result) {
+    /* OJO: en los errores de Clip el código viene en error_code (no en status_detail),
+       y el motivo real está en detail[]. Sin esto, CL1307 y CL2200 se ven idénticos ("Bad Request"). */
+    var code = (result && result.status_detail && result.status_detail.code) || (result && result.error_code);
+    try { console.error('[Clip decline]', code, JSON.stringify(result)); } catch (e) {}
+    var map = {
+      'RE-ISS01': 'Fondos insuficientes.', 'RE-ISS07': 'La tarjeta está vencida.',
+      'RE-3DS01': 'La verificación 3D Secure no se completó.',
+      'CL2200': 'Revisa los datos de la tarjeta.',
+      'CL1307': 'No pudimos validar tu tarjeta. Recarga la página e inténtalo de nuevo.',
+      'CL1607': 'La sesión de pago expiró. Recarga la página e inténtalo de nuevo.',
+      'CL1310': 'Ese plan de meses no está disponible. Elige pago en una sola exhibición.',
+      'CL1136': 'El monto excede el límite permitido para esta tarjeta.',
+      'CL1501': 'No pudimos conectar con el procesador de pagos. Inténtalo más tarde.'
+    };
+    if (code && map[code]) return map[code];
+    return (result && result.status_detail && result.status_detail.message) || (result && (result.message || result.error)) || 'Tu tarjeta fue rechazada.';
+  }
+
+  var _cardOrder = null, _cardExtRef = null;
+
+  /* ---- 3D Secure: challenge en iframe (callbacks onApproved/onDeclined) ---- */
+  var _3dsListener = null;
+  function open3DS(url, paymentId, onApproved, onDeclined) {
+    var ov = document.createElement('div');
+    ov.id = 'clip-3ds-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;';
+    /* Spinner mientras carga el reto 3DS: antes se veía una pantalla oscura vacía y parecía
+       que el pago se había colgado. El iframe entra con opacity 0 y aparece ya cargado. */
+    if (!document.getElementById('clip-3ds-css')) {
+      var st = document.createElement('style'); st.id = 'clip-3ds-css';
+      st.textContent = '@keyframes clip3dsSpin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(st);
+    }
+    var ld = document.createElement('div');
+    ld.style.cssText = 'position:absolute;display:flex;flex-direction:column;align-items:center;gap:12px;color:#fff;font:600 14px/1.4 Nunito,system-ui,sans-serif;text-align:center;';
+    ld.innerHTML = '<div style="width:34px;height:34px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:clip3dsSpin .8s linear infinite"></div>'
+      + '<div>Conectando con tu banco…<br><span style="font-weight:400;opacity:.85">No cierres esta ventana</span></div>';
+    ov.appendChild(ld);
+
+    var fr = document.createElement('iframe');
+    fr.src = url; fr.setAttribute('allow', 'payment *');
+    fr.style.cssText = 'width:100%;height:100%;max-width:520px;max-height:100%;border:0;background:#fff;opacity:0;transition:opacity .2s;';
+    fr.addEventListener('load', function () { fr.style.opacity = '1'; if (ld.parentNode) ld.remove(); });
+    ov.appendChild(fr); document.body.appendChild(ov);
+    var origin = null; try { origin = new URL(url).origin; } catch (e) {}
+    if (_3dsListener) window.removeEventListener('message', _3dsListener);
+    _3dsListener = function (ev) {
+      if (origin && ev.origin !== origin) return;
+      var pid = ev.data && (ev.data.paymentId || ev.data.payment_id || ev.data.id);
+      if (!pid && typeof ev.data === 'string') { try { var j = JSON.parse(ev.data); pid = j.paymentId || j.payment_id || j.id; } catch (e) {} }
+      if (!pid) return;
+      window.removeEventListener('message', _3dsListener); _3dsListener = null;
+      var o = document.getElementById('clip-3ds-ov'); if (o) o.remove();
+      confirm3DS(pid || paymentId, onApproved, onDeclined);
+    };
+    window.addEventListener('message', _3dsListener);
+  }
+  async function confirm3DS(paymentId, onApproved, onDeclined) {
+    var result = null;
+    try { var resp = await fetch('/.netlify/functions/clip-status?id=' + encodeURIComponent(paymentId)); result = await resp.json(); } catch (e) {}
+    var status = result && result.status, code = result && result.status_detail && result.status_detail.code;
+    if (status === 'approved' || status === 'paid' || code === 'AP-PAI01') { onApproved(result); return; }
+    onDeclined('La verificación de seguridad no se completó o fue rechazada.', true);
+  }
+
+  /* ---- cobro unificado: tokeniza el SDK vivo + POST /payments; maneja 3DS ---- */
+  async function chargeCard(opts) {
+    var token;
+    try { var t = await clipCard.cardToken(); token = t && t.id; if (!token) throw new Error('no token'); }
+    catch (e) { opts.onDeclined('Revisa los datos de tu tarjeta e inténtalo de nuevo.', false); return; }
+    var session_id = CLIP_SESSION_ID, user_agent = (navigator && navigator.userAgent) || '';
+    try { if (clipCard.preventionData) { var pd = await clipCard.preventionData(); if (pd && pd.session_id) session_id = pd.session_id; if (pd && pd.user_agent) user_agent = pd.user_agent; } } catch (e) {}
+    var o = _cardOrder || buildOrderData();
+    var nm = (o.nombre || '').split(/\s+/);
+    var result = null, httpOk = false;
+    try {
+      var resp = await fetch('/.netlify/functions/clip-pay', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token, amount: opts.amount, external_reference: opts.extRef,
+          email: o.email, phone: o.telefono,
+          first_name: o.nombrePila || nm[0] || '', last_name: o.apellido || nm.slice(1).join(' '),
+          postal_code: o.codigoPostal, street: o.direccion, colony: o.colonia, city: o.ciudad, state: o.estado,
+          id_type: o.idType, id_number: o.idNumber,
+          session_id: session_id, user_agent: user_agent, client_ip: (window.CLIENT_IPV4 || undefined),
+          installments: (opts.installments && opts.installments > 1) ? opts.installments : undefined
+        })
+      });
+      httpOk = resp.ok; result = await resp.json();
+    } catch (e) { opts.onDeclined('No pudimos conectar con el procesador de pagos. Revisa tu conexión.', false); return; }
+    var status = result && result.status, code = result && result.status_detail && result.status_detail.code;
+    if (httpOk && (status === 'approved' || status === 'paid' || code === 'AP-PAI01')) { opts.onApproved(result); return; }
+    if (status === 'pending' && result.pending_action && result.pending_action.url) {
+      if (opts.onProgress) opts.onProgress();
+      open3DS(result.pending_action.url, result.id, opts.onApproved, opts.onDeclined);
+      return;
+    }
+    opts.onDeclined(declineMsg(result), true);
+  }
+
+  /* ---- registrar pago en Supabase (base + upsells) + xTracky (solo base) ---- */
+  function fireMetaPurchase(order, oid, value, dedupKey) {
+    try {
+      if (dedupKey && oid) { try { if (localStorage.getItem(dedupKey) === oid) return; localStorage.setItem(dedupKey, oid); } catch (e) {} }
+      function ck(n) { var m = document.cookie.match('(^|;)\\s*' + n + '\\s*=\\s*([^;]+)'); return m ? m.pop() : ''; }
+      var fbc = ck('_fbc');
+      if (!fbc) { var cid = new URLSearchParams(location.search).get('fbclid'); if (cid) fbc = 'fb.1.' + Date.now() + '.' + cid; }
+      try { window.fbq && fbq('trackSingle', '1389819873331788', 'Purchase', { value: Number(value) || 0, currency: 'ARS' }, { eventID: oid || undefined }); } catch (e) {}
+      fetch('', {
+        method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: oid || '', event_source_url: location.href, value: Number(value) || 0, currency: 'ARS',
+          email: order.email || '', phone: order.telefono || '', name: order.nombre || '',
+          city: order.ciudad || '', state: order.estado || '', zip: order.codigoPostal || '',
+          fbp: ck('_fbp'), fbc: fbc, external_id: (window.__extId||''), user_agent: navigator.userAgent
+        })
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function fireGoogleAdsCard(order, oid) {
+    try {
+      if (typeof gtag !== 'function') return;
+      try { if (oid && localStorage.getItem('gads_card_done') === oid) return; if (oid) localStorage.setItem('gads_card_done', oid); } catch (e) {}
+      var _nm = (order.nombre || '').trim().split(/\s+/);
+      var _first = _nm[0] || '', _last = _nm.slice(1).join(' ');
+      var _phone = (order.telefono || '').replace(/\D/g, '');
+      if (_phone && _phone.length === 10) _phone = '+52' + _phone; else if (_phone) _phone = '+' + _phone;
+      var _ud = { address: { first_name: _first, last_name: _last, street: order.direccion || '', city: order.ciudad || '', region: order.estado || '', postal_code: order.codigoPostal || '', country: 'MX' } };
+      if (order.email) _ud.email = String(order.email).trim().toLowerCase();
+      if (_phone) _ud.phone_number = _phone;
+      gtag('set', 'user_data', _ud);
+      gtag('event', 'conversion', { 'send_to': ['AW-18339000852/Oi0nCMSjiNgcEJTk26hE', 'AW-18340721584/MO-TCI-GtNkcELDnxKlE', 'AW-18340670961/S-qjCPyip9kcEPHbwalE'], 'value': Number(order.total) || 0, 'currency': 'ARS', 'transaction_id': oid || '' });
+    } catch (e) {}
+  }
+  function recordBasePaid() {
+    try {
+      var order = _cardOrder || {}, oid = _cardExtRef || '';
+      fireGoogleAdsCard(order, oid); /* conversión Google Ads al aprobarse la base (cartão) */
+      fireMetaPurchase(order, oid, order.total, 'meta_capi_card_done'); /* Meta CAPI Purchase (server-side) */
+      try { if (oid && localStorage.getItem('xtracky_card_done') === oid) return; if (oid) localStorage.setItem('xtracky_card_done', oid); } catch (e) {}
+      var qs = ''; try { qs = localStorage.getItem('xtracky_card_qs') || ''; } catch (e) {}
+      var sp = new URLSearchParams(qs || location.search), u = function (k) { return sp.get(k) || null; };
+      fetch(SB_URL + '/rest/v1/orders', { method: 'POST', keepalive: true, headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({
+        site: SB_SITE, status: 'pago', nombre: order.nombre || null, telefono: order.telefono || null, email: order.email || null,
+        direccion: order.direccion || null, ciudad: order.ciudad || null, estado: order.estado || null, codigo_postal: order.codigoPostal || null,
+        metodo_pago: 'card', producto: order.producto || null, slug: order.slug || null, color: order.color || null,
+        total: Number(order.total) || 0, attempt_number: 'card-aprobado',
+        utm_source: u('utm_source'), utm_medium: u('utm_medium'), utm_campaign: u('utm_campaign'), utm_content: u('utm_content'), utm_term: u('utm_term'),
+        ttclid: u('ttclid'), fbclid: u('fbclid'), gclid: u('gclid'), referrer: document.referrer || null, landing_url: location.href
+      }) }).catch(function () {});
+    } catch (e) {}
+  }
+  function recordUpsellPaid(offer) {
+    try {
+      var order = _cardOrder || {};
+      fetch(SB_URL + '/rest/v1/orders', { method: 'POST', keepalive: true, headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({
+        site: SB_SITE, status: 'pago', nombre: order.nombre || null, telefono: order.telefono || null, email: order.email || null,
+        metodo_pago: 'card', producto: 'Upsell · ' + offer.title, slug: order.slug || null,
+        total: offer.price, attempt_number: 'upsell-' + offer.id
+      }) }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---- Upsells one-click: re-tokeniza el SDK vivo en la misma sesión (sin redigitar) ---- */
+  var CARD_UPSELLS = [
+    { id: 'cfdi', price: 299,
+      brand: 'Sodimac', brandLogo: '/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png',
+      title: '¡Felicidades!',
+      pitch: 'Aseguraste tu descuento a través de TikTok Shop. Para concluir, solo falta realizar el pago de la emisión de la Factura Electrónica AFIP de tu producto.',
+      feeLabel: 'Factura Electrónica — Tarifa de Emisión AFIP',
+      cta: 'Pagar y liberar mi envío',
+      explain: 'Para liberar el envío de tu <b>pedido</b> de TikTok Shop, es necesario pagar la Factura Electrónica (Tarifa de Emisión AFIP) por un valor de <b>{price}</b>. Esta tarifa cubre los costos de importación, liberación aduanal y la emisión fiscal exigida por la AFIP para la entrada del producto al país.',
+      warn: 'Sin este pago, la Aduana no realiza la liberación y tu producto no puede ser enviado.' },
+    { id: 'aduana', price: 197, customType: 'trackH',
+      brand: 'Sodimac', brandLogo: '/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png',
+      title: 'Acción necesaria',
+      pitch: 'Tu envío está retenido en Aduana. Regulariza la tasa para continuar la entrega.',
+      feeLabel: 'Tasa de Retención Aduanera',
+      cta: 'Regularizar ahora',
+      explain: 'Tu <b>pedido</b> fue retenido en la aduana para regularización fiscal inmediata, con una tasa de <b>{price}</b>. Una vez regularizada, la liberación del flujo logístico ocurre de forma automática y el rastreo se actualiza con prioridad.',
+      warn: 'Sin este pago, tu envío permanece retenido en Aduana y no puede continuar la entrega.' },
+    { id: 'iva', price: 157, customType: 'trackV',
+      brand: 'Sodimac', brandLogo: '/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png',
+      title: 'Acción necesaria',
+      pitch: 'Tu pedido fue retenido. Es necesario regularizar el IVA para la liberación.',
+      feeLabel: 'Impuesto IVA',
+      cta: 'Regularizar ahora',
+      explain: 'Tu pedido fue retenido por la fiscalización de la AFIP para el pago del IVA correspondiente, por un valor de <b>{price}</b>. Una vez regularizado, la liberación de tu envío ocurre de forma automática.',
+      warn: 'Sin el pago del IVA, tu pedido permanece retenido por la fiscalización y no puede ser liberado.' }
+  ];
+  var _upIdx = 0, _upBuilt = false, _upTimers = [], _upDeclines = 0, _cardDeclines = 0;
+  function money2(n) { return '$' + (Number(n) || 0).toLocaleString('es-MX') + ' ARS'; }
+  function money2dec(n) { return '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ARS'; }
+  function upYesHtml(o) {
+    var label = (o.explain || o.customType) ? o.cta : (o.cta + ' · ' + money2(o.price));
+    var arrow = o.customType ? ' <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' : '';
+    return label + arrow;
+  }
+  function clearUpTimers() { for (var _t = 0; _t < _upTimers.length; _t++) clearTimeout(_upTimers[_t]); _upTimers = []; }
+  var UC_LOGO = '/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png';
+  var UC_TT = '<svg viewBox="0 0 448 512" aria-hidden="true"><path class="tt-c" transform="translate(-15 -9)" d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25v178.72A162.55 162.55 0 1 1 185 188.31v89.89a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 21.32A126.66 126.66 0 0 0 448 109.63v100.28z"/><path class="tt-m" transform="translate(15 9)" d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25v178.72A162.55 162.55 0 1 1 185 188.31v89.89a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 21.32A126.66 126.66 0 0 0 448 109.63v100.28z"/><path class="tt-w" d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25v178.72A162.55 162.55 0 1 1 185 188.31v89.89a74.62 74.62 0 1 0 52.23 71.18V0h88a121.18 121.18 0 0 0 1.86 21.32A126.66 126.66 0 0 0 448 109.63v100.28z"/></svg>';
+  var UC_CHECK = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  var UC_X = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  var UC_SPIN = '<svg class="uc-spin" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+  var UC_SHIELD = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>';
+  function ucNotif(text) {
+    return '<div class="uc-notif" id="uc-notif"><div class="uc-ico">' + UC_TT + '</div>' +
+      '<div class="uc-msg"><div class="uc-top"><span class="uc-origin">TikTok Shop</span><span class="uc-time">ahora</span></div>' +
+      '<div class="uc-ntext">' + text + '</div></div></div>';
+  }
+  function ucHead() {
+    return '<div class="up-step">Paso ' + (_upIdx + 1) + ' de ' + CARD_UPSELLS.length + '</div>' +
+      '<div class="uc-logo"><img src="' + UC_LOGO + '" alt="Logo"></div>';
+  }
+  function renderTrackH(o) {
+    return ucNotif(o.pitch) + ucHead() +
+      '<div class="uc-track-title">Consultando el rastreo de tu envío</div>' +
+      '<div class="uc-steps"><div class="uc-line"><div class="uc-line-prog" id="uc-prog"></div></div>' +
+        '<div class="uc-step"><div class="uc-circle completed" id="uc-s1">' + UC_CHECK + '</div><div class="uc-label">Confirmado</div></div>' +
+        '<div class="uc-step"><div class="uc-circle" id="uc-s2"></div><div class="uc-label">Logística</div></div>' +
+        '<div class="uc-step"><div class="uc-circle" id="uc-s3"></div><div class="uc-label">Aduana</div></div>' +
+        '<div class="uc-step"><div class="uc-circle" id="uc-s4"></div><div class="uc-label">Entrega</div></div></div>' +
+      '<div class="uc-reveal" id="uc-r1"><div class="uc-alert"><div class="uc-alert-ico">!</div><div><div class="uc-alert-title">Acción Necesaria</div><div class="uc-alert-text">Tu pedido fue retenido en la aduana para regularización fiscal inmediata.</div></div></div></div>' +
+      '<div class="uc-reveal" id="uc-r2"><div class="uc-pricebox"><div class="uc-price-label">' + o.feeLabel + '</div><div class="uc-price-val">' + money2dec(o.price).replace(' ARS', '') + ' <span>ARS</span></div></div></div>' +
+      '<div class="uc-reveal" id="uc-r3"><div class="up-error" id="up-error" style="display:none"></div><button type="button" class="uc-btn" id="up-yes">' + upYesHtml(o) + '</button></div>' +
+      '<div class="uc-reveal" id="uc-r4"><div class="uc-info"><div class="uc-info-title">' + UC_SHIELD + ' Envío TikTok Shop Protegido</div><div class="uc-info-text">Una vez regularizada la tasa, la liberación del flujo logístico ocurre de forma automática y el rastreo se actualiza con prioridad.</div></div></div>' +
+      '<button type="button" class="up-no" id="up-no">No, gracias</button>';
+  }
+  function renderTrackV(o) {
+    return ucNotif(o.pitch) + ucHead() +
+      '<div class="uc-vsteps"><div class="uc-vprog" id="uc-prog"></div>' +
+        '<div class="uc-vstep"><div class="uc-circle completed">' + UC_CHECK + '</div><div><div class="uc-vtitle">Pago Confirmado</div><div class="uc-vdesc">Logística internacional iniciada.</div></div></div>' +
+        '<div class="uc-vstep"><div class="uc-circle" id="uc-s2"></div><div><div class="uc-vtitle">Clasificación de Importación</div><div class="uc-vdesc">Procesamiento en el centro logístico.</div></div></div>' +
+        '<div class="uc-vstep"><div class="uc-circle" id="uc-s3"></div><div><div class="uc-vtitle">Fiscalización AFIP</div><div class="uc-vdesc">Cálculo de impuestos y tasas (IVA).</div></div></div>' +
+        '<div class="uc-vstep"><div class="uc-circle" id="uc-s4"></div><div><div class="uc-vtitle">Entrega del Pedido</div><div class="uc-vdesc">Envío a la dirección registrada.</div></div></div></div>' +
+      '<div class="uc-action" id="uc-action">' +
+        '<div class="uc-badge"><span class="uc-dot"></span> Monitoreo en Tiempo Real</div>' +
+        '<div class="uc-alert-row"><div class="uc-alert-ico5"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="uc-alert-title">Acción Necesaria</div><div class="uc-alert-text">Tu pedido fue retenido por la fiscalización para el pago de impuestos.</div></div></div>' +
+        '<div class="uc-ticket"><span class="uc-cur">$</span><span class="uc-amt">' + money2dec(o.price).replace('$', '').replace(' ARS', '') + '</span><span class="uc-suf">ARS</span></div>' +
+        '<div class="up-error" id="up-error" style="display:none"></div>' +
+        '<button type="button" class="uc-btn" id="up-yes">' + upYesHtml(o) + '</button>' +
+        '<div class="uc-foot">' + UC_SHIELD + ' Pago 100% Protegido vía TikTok</div>' +
+      '</div>' +
+      '<button type="button" class="up-no" id="up-no">No, gracias</button>';
+  }
+  function renderGenericSheet(o) {
+    var rich = !!(o.brand || o.feeLabel || o.explain);
+    var h = '<div class="up-step">Paso ' + (_upIdx + 1) + ' de ' + CARD_UPSELLS.length + '</div>';
+    if (o.brandLogo) h += '<div class="up-brand" style="display:flex"><img src="' + o.brandLogo + '" alt="' + (o.brand || 'TikTok Shop') + '"></div>';
+    else if (o.brand) h += '<div class="up-brand" style="display:flex"><span class="tt">🎵</span> ' + o.brand + '</div>';
+    if (!rich) h += '<div class="up-icon">🎁</div>';
+    h += '<div class="up-title">' + o.title + '</div><div class="up-pitch">' + o.pitch + '</div>';
+    if (o.feeLabel) h += '<div class="up-feebox rich"><div class="up-feelabel">' + o.feeLabel + '</div><div class="up-price">' + money2dec(o.price) + '</div></div>';
+    else h += '<div class="up-feebox"><div class="up-price">' + money2(o.price) + '</div></div>';
+    if (!rich) h += '<div class="up-note">Se agrega a tu pedido actual.</div>';
+    h += '<div class="up-error" id="up-error" style="display:none"></div>' +
+      '<button type="button" class="up-yes" id="up-yes">' + upYesHtml(o) + '</button>' +
+      '<button type="button" class="up-no" id="up-no">No, gracias</button>';
+    if (o.explain) h += '<div class="up-explain">' + o.explain.replace('{price}', money2dec(o.price)) + (o.warn ? '<span class="warn">' + o.warn + '</span>' : '') + '</div>';
+    h += '<div class="up-secure">🔒 Se cobra a la misma tarjeta, sin volver a capturarla.</div>';
+    return h;
+  }
+  function ucSet(id, state) {
+    var el = document.getElementById(id); if (!el) return;
+    el.className = 'uc-circle ' + state + (state === 'loading' ? ' uc-pulse' : '');
+    el.innerHTML = state === 'completed' ? UC_CHECK : (state === 'error' ? UC_X : (state === 'loading' ? UC_SPIN : ''));
+  }
+  function animTrack(vertical) {
+    var prog = document.getElementById('uc-prog'), notif = document.getElementById('uc-notif'), action = document.getElementById('uc-action');
+    var setProg = function (v) { if (!prog) return; if (vertical) prog.style.height = v; else prog.style.width = v; };
+    _upTimers.push(setTimeout(function () { ucSet('uc-s2', 'loading'); setProg('33%'); _upTimers.push(setTimeout(function () { if (notif) notif.classList.add('show'); }, 600)); }, 1000));
+    _upTimers.push(setTimeout(function () { ucSet('uc-s2', 'completed'); ucSet('uc-s3', 'loading'); setProg('66%'); }, 3000));
+    _upTimers.push(setTimeout(function () {
+      ucSet('uc-s3', 'error'); ucSet('uc-s4', 'error'); setProg('100%');
+      if (prog) { if (vertical) prog.classList.add('uc-vprog-err'); else prog.style.background = '#ff0050'; }
+      if (vertical) { if (action) action.classList.add('visible'); }
+      else { ['uc-r1', 'uc-r2', 'uc-r3', 'uc-r4'].forEach(function (id, idx) { _upTimers.push(setTimeout(function () { var e = document.getElementById(id); if (e) e.classList.add('visible'); }, idx * 150)); }); }
+    }, 5000));
+    if (notif) notif.onclick = function () { notif.classList.remove('show'); };
+  }
+  function buildUpsellOverlay() {
+    if (_upBuilt) return;
+    var css = document.createElement('style');
+    css.textContent =
+      '.up-ov{position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;}' +
+      '.up-ov.on{display:flex;}' +
+      '.up-sheet{background:#fff;border-radius:18px;max-width:420px;width:100%;padding:24px 20px calc(20px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 25px 60px rgba(0,0,0,.3);max-height:92vh;overflow-y:auto;}' +
+      '.up-step{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;}' +
+      '.up-icon{font-size:40px;line-height:1;margin-bottom:8px;}' +
+      '.up-title{font-size:19px;font-weight:800;color:#161820;margin-bottom:8px;}' +
+      '.up-pitch{font-size:14px;color:#4b5563;line-height:1.5;margin-bottom:14px;}' +
+      '.up-price{font-size:30px;font-weight:800;color:#e9202f;margin-bottom:4px;}' +
+      '.up-note{font-size:12px;color:#9ca3af;margin-bottom:16px;}' +
+      '.up-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;margin-bottom:12px;}' +
+      '.up-yes{width:100%;border:none;border-radius:999px;padding:15px;background:#e9202f;color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(254,44,85,.3);display:flex;align-items:center;justify-content:center;gap:8px;}' +
+      '.up-yes:disabled{opacity:.7;cursor:not-allowed;}' +
+      '.up-no{width:100%;border:none;background:none;color:#9ca3af;font-size:14px;font-weight:600;cursor:pointer;padding:12px;margin-top:4px;text-decoration:underline;}' +
+      '.up-secure{font-size:11.5px;color:#9ca3af;margin-top:10px;}' +
+      '.up-yes .spin{width:16px;height:16px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:ckSpin .7s linear infinite;}' +
+      '.up-brand{display:none;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:800;color:#161820;margin-bottom:14px;}' +
+      '.up-brand .tt{font-size:18px;line-height:1;}' +
+      '.up-brand img{height:26px;width:auto;display:block;}' +
+      '.up-feebox{margin-bottom:16px;}' +
+      '.up-feebox.rich{border:1px solid #ffe0e6;background:#fff5f7;border-radius:14px;padding:14px 16px;}' +
+      '.up-feelabel{font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.03em;line-height:1.35;margin-bottom:6px;}' +
+      '.up-explain{text-align:left;background:#f9fafb;border:1px solid #eef0f3;border-radius:12px;padding:13px 15px;font-size:12.5px;line-height:1.55;color:#4b5563;margin-top:14px;}' +
+      '.up-explain b{color:#161820;font-weight:700;}' +
+      '.up-explain .warn{display:block;margin-top:8px;color:#dc2626;font-weight:700;}' +
+      '@keyframes ckSpin{to{transform:rotate(360deg)}}' +
+      '.up-spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:ckSpin .7s linear infinite;vertical-align:middle;}' +
+      '.up-sheet-custom{padding:22px 18px calc(18px + env(safe-area-inset-bottom));}' +
+      '.uc-logo{margin-bottom:16px;}.uc-logo img{height:22px;width:auto;}' +
+      '.uc-notif{position:fixed;top:-160px;left:50%;transform:translateX(-50%) scale(.96);width:calc(100% - 20px);max-width:400px;background:rgba(250,250,252,.85);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:.5px solid rgba(0,0,0,.06);border-radius:22px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 10px 30px -6px rgba(0,0,0,.25),0 2px 6px rgba(0,0,0,.08);z-index:100000;opacity:0;transition:transform .55s cubic-bezier(.19,1.15,.22,1),opacity .4s ease,top .55s cubic-bezier(.19,1.15,.22,1);}' +
+      '.uc-notif.show{top:12px;opacity:1;transform:translateX(-50%) scale(1);}' +
+      '.uc-ico{width:38px;height:38px;background:#000;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}' +
+      '.uc-ico svg{width:23px;height:23px;}.uc-ico .tt-c{fill:#25f4ee;}.uc-ico .tt-m{fill:#e9202f;}.uc-ico .tt-w{fill:#fff;}' +
+      '.uc-msg{flex:1;min-width:0;text-align:left;}' +
+      '.uc-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:1px;}' +
+      '.uc-origin{font-size:14px;font-weight:700;color:#1c1c1e;}.uc-time{font-size:12.5px;color:rgba(60,60,67,.6);}' +
+      '.uc-ntext{font-size:13.5px;color:#1c1c1e;line-height:1.3;text-align:left;}' +
+      '.uc-track-title{font-size:17px;font-weight:900;margin-bottom:22px;color:#020617;letter-spacing:-.02em;}' +
+      '.uc-steps{display:flex;justify-content:space-between;position:relative;margin-bottom:8px;}' +
+      '.uc-step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;z-index:1;}' +
+      '.uc-circle{width:40px;height:40px;border-radius:50%;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;background:#fff;color:#cbd5e1;flex-shrink:0;transition:all .6s cubic-bezier(.34,1.56,.64,1);}' +
+      '.uc-circle.completed{border-color:#22c55e;background:#22c55e;color:#fff;box-shadow:0 0 0 5px rgba(34,197,94,.08);}' +
+      '.uc-circle.error{border-color:#ff0050;background:#ff0050;color:#fff;box-shadow:0 0 0 5px rgba(255,0,80,.08);}' +
+      '.uc-circle.loading{border-color:#f59e0b;background:#fff;color:#f59e0b;box-shadow:0 0 0 5px rgba(245,158,11,.08);}' +
+      '.uc-pulse{animation:ucPulse 2s infinite;}@keyframes ucPulse{0%{box-shadow:0 0 0 0 rgba(245,158,11,.4)}70%{box-shadow:0 0 0 12px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}' +
+      '.uc-label{font-size:10px;margin-top:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;}' +
+      '.uc-line{position:absolute;top:20px;left:12%;right:12%;height:2px;background:#e2e8f0;z-index:0;}' +
+      '.uc-line-prog{height:100%;width:0;background:#22c55e;transition:width 1s cubic-bezier(.65,0,.35,1);}' +
+      '.uc-reveal{opacity:0;transform:translateY(16px);transition:all .8s cubic-bezier(.16,1,.3,1);}' +
+      '.uc-reveal.visible{opacity:1;transform:translateY(0);}' +
+      '.uc-alert{background:rgba(255,0,80,.05);border:1px solid rgba(255,0,80,.1);border-radius:16px;padding:16px;margin-top:20px;display:flex;gap:14px;align-items:center;text-align:left;}' +
+      '.uc-alert-ico{background:#ff0050;color:#fff;width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;box-shadow:0 4px 12px rgba(255,0,80,.2);}' +
+      '.uc-alert-title{color:#000;font-weight:900;font-size:16px;margin-bottom:2px;}' +
+      '.uc-alert-text{color:#64748b;font-size:13.5px;line-height:1.45;font-weight:500;}' +
+      '.uc-pricebox{text-align:center;padding:16px 0 6px;}' +
+      '.uc-price-label{font-size:12.5px;color:#64748b;margin-bottom:8px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}' +
+      '.uc-price-val{font-size:44px;font-weight:900;color:#000;letter-spacing:-.04em;line-height:1;}' +
+      '.uc-price-val span{font-size:18px;font-weight:800;color:#64748b;}' +
+      '.uc-btn{width:100%;padding:17px;background:#000;color:#fff;border:none;border-radius:16px;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 15px 30px -12px rgba(0,0,0,.55);margin-top:6px;transition:transform .2s,background .2s;}' +
+      '.uc-btn:hover{background:#111;transform:translateY(-2px);}.uc-btn:disabled{opacity:.75;cursor:not-allowed;}' +
+      '.uc-spin{animation:ckSpin 1s linear infinite;}' +
+      '.uc-info{background:rgba(241,245,249,.6);border-radius:16px;padding:16px;margin-top:20px;text-align:left;}' +
+      '.uc-info-title{font-weight:800;font-size:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;color:#020617;text-transform:uppercase;letter-spacing:.08em;}' +
+      '.uc-info-text{font-size:12.5px;color:#64748b;line-height:1.65;font-weight:500;}' +
+      '.uc-vsteps{display:flex;flex-direction:column;gap:22px;position:relative;text-align:left;margin-bottom:8px;}' +
+      '.uc-vsteps::before{content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;background:#e2e8f0;z-index:0;}' +
+      '.uc-vprog{position:absolute;left:19px;top:8px;width:2px;height:0;background:#22c55e;z-index:1;transition:height 1s ease-in-out;}' +
+      '.uc-vprog-err{background:#ff0050;}' +
+      '.uc-vstep{display:flex;gap:16px;position:relative;z-index:2;align-items:flex-start;}' +
+      '.uc-vtitle{font-size:15px;font-weight:800;color:#020617;}' +
+      '.uc-vdesc{font-size:12.5px;color:#64748b;margin-top:2px;font-weight:500;}' +
+      '.uc-action{opacity:0;transform:translateY(30px);pointer-events:none;transition:all .9s cubic-bezier(.16,1,.3,1);margin-top:20px;}' +
+      '.uc-action.visible{opacity:1;transform:translateY(0);pointer-events:auto;}' +
+      '.uc-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,0,80,.1);color:#ff0050;border-radius:100px;font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;}' +
+      '.uc-dot{width:8px;height:8px;background:#ff0050;border-radius:50%;animation:ucDot 1.5s infinite;}' +
+      '@keyframes ucDot{0%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}100%{transform:scale(1);opacity:1}}' +
+      '.uc-alert-row{display:flex;gap:16px;align-items:center;text-align:left;margin-bottom:22px;}' +
+      '.uc-alert-ico5{width:52px;height:52px;background:#ff0050;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 8px 16px rgba(255,0,80,.2);}' +
+      '.uc-alert-ico5 svg{width:28px;height:28px;}' +
+      '.uc-ticket{background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;padding:24px;margin-bottom:20px;position:relative;}' +
+      '.uc-ticket::before{content:"IVA PENDIENTE";position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:10px;font-weight:900;padding:4px 12px;border-radius:6px;letter-spacing:.1em;white-space:nowrap;}' +
+      '.uc-cur{font-size:20px;font-weight:900;color:#64748b;margin-right:4px;}' +
+      '.uc-amt{font-size:46px;font-weight:900;color:#000;letter-spacing:-.04em;}' +
+      '.uc-suf{font-size:17px;font-weight:800;color:#64748b;margin-left:6px;}' +
+      '.uc-foot{margin-top:16px;font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:center;gap:8px;}';
+    document.head.appendChild(css);
+    var ov = document.createElement('div'); ov.id = 'clip-up-ov'; ov.className = 'up-ov';
+    ov.innerHTML = '<div class="up-sheet" id="up-sheet"></div>';
+    document.body.appendChild(ov);
+    _upBuilt = true;
+  }
+  function showUpsell(i) {
+    if (i >= CARD_UPSELLS.length) { finishAll(); return; }
+    clearUpTimers();
+    _upIdx = i;
+    _upDeclines = 0;
+    var o = CARD_UPSELLS[i];
+    var sheet = document.getElementById('up-sheet');
+    sheet.className = 'up-sheet' + (o.customType ? ' up-sheet-custom' : '');
+    sheet.innerHTML = o.customType === 'trackH' ? renderTrackH(o) : (o.customType === 'trackV' ? renderTrackV(o) : renderGenericSheet(o));
+    sheet.scrollTop = 0;
+    var yes = document.getElementById('up-yes'); if (yes) yes.addEventListener('click', payUpsell);
+    var no = document.getElementById('up-no'); if (no) no.addEventListener('click', function () { showUpsell(_upIdx + 1); });
+    document.getElementById('clip-up-ov').classList.add('on');
+    document.body.style.overflow = 'hidden';
+    if (o.customType === 'trackH') animTrack(false);
+    else if (o.customType === 'trackV') animTrack(true);
+  }
+  function setUpsellBusy(v) {
+    var yes = document.getElementById('up-yes'), no = document.getElementById('up-no'), o = CARD_UPSELLS[_upIdx];
+    if (yes) { yes.disabled = v; yes.innerHTML = v ? '<span class="up-spin"></span> Procesando...' : upYesHtml(o); }
+    if (no) no.style.visibility = v ? 'hidden' : '';
+  }
+  function payUpsell() {
+    var o = CARD_UPSELLS[_upIdx];
+    var err = document.getElementById('up-error'); if (err) err.style.display = 'none';
+    setUpsellBusy(true);
+    chargeCard({
+      amount: o.price, extRef: (_cardExtRef || 'up') + '-' + o.id, installments: 1,
+      onApproved: function () { recordUpsellPaid(o); showUpsell(_upIdx + 1); },
+      onDeclined: function (msg, real) {
+        setUpsellBusy(false);
+        if (real) _upDeclines++;
+        var e = document.getElementById('up-error');
+        if (real && _upDeclines >= 2) {
+          /* 2 recusas REAIS del mismo one-click -> pagar ESE upsell por transferencia bancaria */
+          if (e) { e.textContent = 'No pudimos procesar tu tarjeta. Te llevamos a pagar por transferencia bancaria...'; e.style.display = 'block'; }
+          var y = document.getElementById('up-yes'); if (y) { y.disabled = true; y.style.opacity = '.5'; y.textContent = 'Redirigiendo...'; }
+          var nb = document.getElementById('up-no'); if (nb) nb.style.visibility = 'hidden';
+          clearUpTimers();
+          setTimeout(function () { window.location.href = getUrlWithUtm('/up' + (_upIdx + 1) + '.html'); }, 1800);
+          return;
+        }
+        if (e) { e.textContent = msg; e.style.display = 'block'; }
+      },
+      onProgress: function () {}
+    });
+  }
+  function finishAll() {
+    var ov = document.getElementById('clip-up-ov'); if (ov) ov.classList.remove('on');
+    document.body.style.overflow = '';
+    window.location.href = getUrlWithUtm('/gracias.html');
+  }
+  function startUpsells() {
+    recordBasePaid();
+    setSubmitting(false);
+    buildUpsellOverlay();
+    showUpsell(0);
+  }
+
+  /* ===== Cartão via LINK de pago Clip (1 link por preço). PREENCHER os links: ===== */
+  var CLIP_LINKS = {
+    'mesa-plegable-fold': {
+      '19900': 'https://pago.clip.mx/v3/44e428be-eb0f-4449-8efc-ef9515f48b52',
+      '34900': 'https://pago.clip.mx/v3/a0026577-c752-41c3-8412-8ea552677226',
+      '59900': 'https://pago.clip.mx/v3/1870dbf1-6966-4f99-8146-ad0de1195225'
+    },
+    'armario-flexhome': {
+      '27900': 'https://pago.clip.mx/v3/c62422c3-2d90-4d62-b2e3-bb0fbe444f0e'
+    }
+  };
+  function getClipLink(order) {
+    var slug = (typeof PRODUCT_SLUG !== 'undefined' && PRODUCT_SLUG) ? PRODUCT_SLUG : (order && order.slug) || '';
+    var price = String(typeof PRICE !== 'undefined' ? PRICE : (order && order.price) || '');
+    return (CLIP_LINKS[slug] || {})[price] || '';
+  }
+  async function payWithCard() {
+    var order = buildOrderData(); _cardOrder = order;
+    try { localStorage.setItem('foldease-order', JSON.stringify(order)); } catch (e) {}
+    try { localStorage.setItem('xtracky_card_qs', location.search || ''); _cardExtRef = SB_SITE + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); localStorage.setItem('xtracky_card_order_id', _cardExtRef); } catch (e) {}
+    var __link = getClipLink(order);
+    if (!__link) { setSubmitting(false); alert('El link de pago aún no está disponible. Intenta de nuevo en un momento.'); return; }
+    setSubmitting(true, 'Redirigiendo al pago seguro...');
+    sendSupabasePending();
+    setTimeout(function () { window.location.href = __link; }, 300);
+    return;
+    var errB = document.getElementById('clip-error'); if (errB) errB.style.display = 'none';
+    if (!clipMounted) { mountClipCard(); showCardError('El formulario de tarjeta se está cargando, inténtalo de nuevo en un segundo.'); return; }
+    setSubmitting(true, 'Verificando tarjeta...');
+    var installments = 1;
+    try { var iv = await clipCard.installments(); installments = Number(iv) || 1; } catch (e) {}
+    var order = buildOrderData(); order.installments = installments; _cardOrder = order;
+    localStorage.setItem('foldease-order', JSON.stringify(order));
+    try {
+      localStorage.setItem('xtracky_card_qs', location.search || '');
+      _cardExtRef = 'mx-ttshop-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      localStorage.setItem('xtracky_card_order_id', _cardExtRef);
+    } catch (e) {}
+    sendSupabasePending();
+    setSubmitting(true, 'Procesando pago...');
+    chargeCard({
+      amount: PRICE + SHIP, extRef: _cardExtRef, installments: installments,
+      onApproved: function (result) {
+        try { order.clipId = result && result.id; order.cardPaid = true; localStorage.setItem('foldease-order', JSON.stringify(order)); } catch (e) {}
+        try { if (window.Cart) Cart.clear(); } catch (e) {} /* pedido pagado → vaciar carrito */
+        startUpsells();
+      },
+      onDeclined: function (msg, real) {
+        if (real) _cardDeclines++;
+        if (real && _cardDeclines >= 2) {
+          /* 2 recusas REAIS del gateway no pedido principal -> pagar por transferência (misma pág. del flujo SPEI) */
+          setSubmitting(true, 'Redirigiendo a transferencia...');
+          showCardError('No pudimos procesar tu tarjeta tras 2 intentos. Te llevamos a pagar por transferencia bancaria...');
+          try { if (window.Cart) Cart.clear(); } catch (e) {}
+          setTimeout(function () { window.location.href = getUrlWithUtm('pago.html'); }, 1800);
+          return;
+        }
+        showCardError('Pago no aprobado: ' + msg + ' Intenta con otra tarjeta o paga con transferencia bancaria.');
+        setSubmitting(false);
+      },
+      onProgress: function () { setSubmitting(true, 'Verificación de seguridad...'); }
+    });
+  }
+
+  document.getElementById('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (submitting) return;
+    if (window.Cart && !Cart.count()) { Cart.open(); return; } /* carrito vacío: no cobrar */
+    if (!validateAddress(this)) return;
+    if (metodoPago === 'card') { payWithCard(); return; }
+    /* ---- SPEI ---- */
+    setSubmitting(true);
+    var order = buildOrderData();
+    localStorage.setItem('foldease-order', JSON.stringify(order));
+    /* vaciar el carrito SOLO después de registrar el pedido pendiente: sendSupabasePending
+       lee PRODUCT_NAME/PRICE tras un await, y vaciarlo antes lo dejaba en $0 / sin producto */
+    sendSupabasePending().finally(function () {
+      try { if (window.Cart) Cart.clear(); } catch (e) {}
+    });
+    setTimeout(function () { window.location.href = getUrlWithUtm('pago.html'); }, 400);
+  });
+
+  /* payment method selector (SPEI / Tarjeta) */
+  (function(){
+    var optCard = document.getElementById('pay-opt-card'),
+        optSpei = document.getElementById('pay-opt-transfer'),
+        info = document.querySelector('.ck-transfer-info'),
+        cardWrap = document.getElementById('clip-card-wrap');
+    if (CARD_ENABLED && optCard) optCard.style.display = '';
+    function sel(method){
+      if (method === 'card' && !CARD_ENABLED) return;
+      metodoPago = method;
+      var card = method === 'card';
+      if (optCard) optCard.classList.toggle('active', card);
+      if (optSpei) optSpei.classList.toggle('active', !card);
+      if (info) info.style.display = card ? 'none' : '';
+      if (cardWrap) cardWrap.style.display = card ? '' : 'none';
+      /* add-ons solo en transferencia: el link de tarjeta cobra el precio fijo del link */
+      (function(){
+        var box = document.getElementById('ship-opts');
+        var exp = box && box.querySelector('[data-ship="3900"]');
+        if (exp) exp.style.display = card ? 'none' : '';
+        if (card && box) {
+          SHIP = 0;
+          [].forEach.call(box.querySelectorAll('.ck-pay-option'), function(o){ o.classList.toggle('active', o.getAttribute('data-ship') === '0'); });
+          if (typeof recalc === 'function') recalc();
+        }
+      })();
+      if (typeof recalc === 'function') recalc();
+      /* cartão = link Clip (sem SDK, sem mount) */
+      if (btnTransfer && !submitting) paintBtn();
+    }
+    if (optCard) optCard.addEventListener('click', function(){ sel('card'); });
+    if (optSpei) optSpei.addEventListener('click', function(){ sel('spei'); });
+    sel('spei');
+    /* Precalienta el antifraude: inyecta el script de risk al cargar la página, no al elegir tarjeta. */
+    try { ensureRiskScript(); } catch (e) {}
+  })();
+
+  /* auto-detect state from IP */
+  (function(){
+    var regionSel = document.querySelector('select[name="region"]');
+    function norm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[^a-z]/g,''); }
+    var KEYWORDS = [
+      ['aguascalientes','Aguascalientes'],['bajacaliforniasur','Baja California Sur'],['bajacalifornia','Baja California'],
+      ['campeche','Campeche'],['chiapas','Chiapas'],['chihuahua','Chihuahua'],
+      ['mexicocity','Ciudad de Argentina'],['ciudaddemexico','Ciudad de Argentina'],['distritofederal','Ciudad de Argentina'],
+      ['coahuila','Coahuila'],['colima','Colima'],['durango','Durango'],['estadodemexico','Estado de Argentina'],
+      ['guanajuato','Guanajuato'],['guerrero','Guerrero'],['hidalgo','Hidalgo'],['jalisco','Jalisco'],
+      ['michoacan','Michoacán'],['morelos','Morelos'],['nayarit','Nayarit'],['nuevoleon','Nuevo León'],
+      ['oaxaca','Oaxaca'],['puebla','Puebla'],['queretaro','Querétaro'],['quintanaroo','Quintana Roo'],
+      ['sanluispotosi','San Luis Potosí'],['sinaloa','Sinaloa'],['sonora','Sonora'],['tabasco','Tabasco'],
+      ['tamaulipas','Tamaulipas'],['tlaxcala','Tlaxcala'],['veracruz','Veracruz'],['yucatan','Yucatán'],
+      ['zacatecas','Zacatecas'],['mexico','Estado de Argentina']
+    ];
+    function pickRegion(name){ var r = norm(name); if(!r) return null; for(var i=0;i<KEYWORDS.length;i++){ if(r.indexOf(KEYWORDS[i][0]) !== -1) return KEYWORDS[i][1]; } return null; }
+    function selectByText(sel, name){ if(!sel || !name) return; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value === name || sel.options[i].text === name){ sel.selectedIndex = i; sel.classList.add('filled'); return; } } }
+    fetch('https://ipwho.is/').then(function(r){ return r.json(); }).then(function(d){ if(d && d.country_code === 'MX') selectByText(regionSel, pickRegion(d.region)); }).catch(function(){});
+  })();
+</script>
+</body></html>

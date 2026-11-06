@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<script src="/js/site-utils.js"></script>
+<script src="/js/funnel-events.js"></script>
+  <script>
+/* ---- Tarjeta (Clip) aprobada: página de éxito. Marca pedido PAGADO en Supabase + conversión xTracky.
+   Guard metodoPago==='card' + dedup xtracky_card_done (no doble cuenta). ---- */
+(function () {
+  try {
+    var order = null;
+    try { order = JSON.parse(localStorage.getItem('foldease-order') || 'null'); } catch (e) {}
+    if (!order || order.metodoPago !== 'card') return;
+
+    var oid = localStorage.getItem('xtracky_card_order_id');
+    if (!oid) { oid = 'mx-ttshop-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+    if (localStorage.getItem('xtracky_card_done') === oid) return;
+    try { localStorage.setItem('xtracky_card_done', oid); } catch (e) {}
+
+    var _sbqs = ''; try { _sbqs = localStorage.getItem('xtracky_card_qs') || ''; } catch (e) {}
+    var _sp = new URLSearchParams(_sbqs || location.search);
+    var _u = function (k) { return _sp.get(k) || null; };
+
+    var SB_URL = 'https://oorzpkzwjtsjsvvjqqih.supabase.co';
+    var SB_KEY = 'sb_publishable_8h76Y4nOvNs9sq8O35EtDQ_PQ0vFxY4';
+    fetch(SB_URL + '/rest/v1/orders', {
+      method: 'POST', keepalive: true,
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        site: 'ttshop-arg',
+        status: 'pago',
+        nombre: order.nombre || null, telefono: order.telefono || null, email: order.email || null,
+        direccion: order.direccion || null, colonia: order.colonia || null, ciudad: order.ciudad || null,
+        estado: order.estado || null, codigo_postal: order.codigoPostal || null,
+        metodo_pago: 'card', producto: order.producto || null, slug: order.slug || null, color: order.color || null,
+        total: Number(order.total) || 0, attempt_number: 'card-aprobado',
+        utm_source: _u('utm_source'), utm_medium: _u('utm_medium'), utm_campaign: _u('utm_campaign'),
+        utm_content: _u('utm_content'), utm_term: _u('utm_term'),
+        ttclid: _u('ttclid'), fbclid: _u('fbclid'), gclid: _u('gclid'),
+        referrer: document.referrer || null, landing_url: location.href
+      })
+    }).catch(function () {});
+
+
+    /* ---- Google Ads — conversión tarjeta (backup; dedup gads_card_done, mismo oid que el checkout) ---- */
+    if (typeof gtag === 'function') {
+      try {
+        if (localStorage.getItem('gads_card_done') !== oid) {
+          var _nm = String(order.nombre || '').trim().split(/\s+/);
+          var _first = _nm.shift() || '', _last = _nm.join(' ');
+          var _phone = String(order.telefono || '').replace(/\D/g, '');
+          if (_phone.length === 10) _phone = '+52' + _phone; else if (_phone.length === 12 && _phone.slice(0, 2) === '52') _phone = '+' + _phone; else if (_phone) _phone = '+' + _phone;
+          var _ud = { 'address': { 'first_name': _first, 'last_name': _last, 'street': order.direccion || '', 'city': order.ciudad || '', 'region': order.estado || '', 'postal_code': order.codigoPostal || '', 'country': 'MX' } };
+          if (order.email) _ud.email = String(order.email).trim().toLowerCase();
+          if (_phone) _ud.phone_number = _phone;
+          gtag('set', 'user_data', _ud);
+          gtag('event', 'conversion', { 'send_to': ['AW-18339000852/Oi0nCMSjiNgcEJTk26hE', 'AW-18340721584/MO-TCI-GtNkcELDnxKlE', 'AW-18340670961/S-qjCPyip9kcEPHbwalE'], 'value': Number(order.total) || 0, 'currency': 'ARS', 'transaction_id': oid });
+          try { localStorage.setItem('gads_card_done', oid); } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    /* ---- Meta CAPI — Purchase tarjeta (backup; server-side, dedup meta_capi_card_done) ---- */
+    try {
+      if (localStorage.getItem('meta_capi_card_done') !== oid) {
+        localStorage.setItem('meta_capi_card_done', oid);
+        var _ck = function (n) { var m = document.cookie.match('(^|;)\\s*' + n + '\\s*=\\s*([^;]+)'); return m ? m.pop() : ''; };
+        var _fbc = _ck('_fbc');
+        if (!_fbc) { var _cid = new URLSearchParams(location.search).get('fbclid'); if (_cid) _fbc = 'fb.1.' + Date.now() + '.' + _cid; }
+        try { window.fbq && fbq('trackSingle', '1389819873331788', 'Purchase', { value: Number(order.total) || 0, currency: 'ARS' }, { eventID: oid || undefined }); } catch (e) {}
+        fetch('', {
+          method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: oid || '', event_source_url: location.href, value: Number(order.total) || 0, currency: 'ARS',
+            email: order.email || '', phone: order.telefono || '', name: order.nombre || '',
+            city: order.ciudad || '', state: order.estado || '', zip: order.codigoPostal || '',
+            fbp: _ck('_fbp'), fbc: _fbc, external_id: (window.__extId||''), user_agent: navigator.userAgent
+          })
+        }).catch(function () {});
+      }
+    } catch (e) {}
+  } catch (e) {}
+})();
+</script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>¡Compra confirmada! - TTK Shop Argentina</title>
+<meta name="theme-color" content="#ffffff" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#161820;-webkit-font-smoothing:antialiased;min-height:100vh}
+  img{max-width:100%;display:block}
+  .top{background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #eee}
+  .top img{height:26px}
+  .wrap{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  .card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:24px 18px}
+  .ok{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+  .ok-badge{width:72px;height:72px;border-radius:50%;background:#f0fdf4;border:5px solid #dcfce7;display:flex;align-items:center;justify-content:center}
+  .ok-badge svg{width:34px;height:34px;stroke:#16a34a;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .ok h1{font-size:20px;font-weight:800}
+  .ok p{font-size:14px;color:#6b7280;line-height:1.5}
+  .sum{border-top:1px solid #f0f0f0;margin-top:18px;padding-top:16px;display:flex;flex-direction:column;gap:10px}
+  .row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;font-size:14px}
+  .row .k{color:#9ca3af;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+  .row .v{font-weight:700;text-align:right}
+  .total .v{color:#e9202f;font-size:18px;font-weight:800}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .badge{background:#fff;border-radius:10px;padding:9px 13px;font-size:12px;font-weight:600;color:#4b5563;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .foot{text-align:center;font-size:12px;color:#9ca3af}
+  .foot a{color:#e9202f;font-weight:600;text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="top"><img src="/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png" alt="Sodimac"></div>
+  <div class="wrap">
+    <div class="card">
+      <div class="ok">
+        <div class="ok-badge"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h1>¡Pago confirmado!</h1>
+        <p>Tu pago con tarjeta se aprobó correctamente. Recibirás la confirmación de tu pedido por correo y WhatsApp.</p>
+      </div>
+      <div class="sum" id="sum">
+        <div class="row"><span class="k">Producto</span><span class="v" id="g-prod">—</span></div>
+        <div class="row"><span class="k">Envío</span><span class="v" style="color:#16a34a">Gratis a toda Argentina</span></div>
+        <div class="row"><span class="k">Entrega estimada</span><span class="v" id="g-deliv">3 - 5 días</span></div>
+        <div class="row total"><span class="k">Total pagado</span><span class="v" id="g-total">—</span></div>
+      </div>
+    </div>
+    <div class="badges">
+      <div class="badge">🛡️ Pago 100% seguro</div>
+      <div class="badge">💳 Procesado por Clip</div>
+      <div class="badge">🇲🇽 Envío nacional</div>
+    </div>
+    <div class="foot">¿Necesitas ayuda? <a href="mailto:contacto@ttkshopmx.online">contacto@ttkshopmx.online</a></div>
+  </div>
+
+  <script>
+  (function () {
+    var order = null;
+    try { order = JSON.parse(localStorage.getItem('foldease-order') || 'null'); } catch (e) {}
+    if (!order) return;
+    function money(n){ return '$' + (Number(n)||0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ARS'; }
+    function set(id,v){ var e=document.getElementById(id); if(e&&v) e.textContent=v; }
+    set('g-prod', order.producto || order.productoCorto || 'Tu pedido');
+    set('g-total', money(order.total));
+    /* entrega dinámica 3-5 días */
+    try {
+      var M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      function plus(d){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()+d);return x;}
+      var a=plus(3),b=plus(5);
+      set('g-deliv', a.getMonth()===b.getMonth() ? a.getDate()+' - '+b.getDate()+' '+M[b.getMonth()] : a.getDate()+' '+M[a.getMonth()]+' - '+b.getDate()+' '+M[b.getMonth()]);
+    } catch(e){}
+  })();
+  </script>
+</body>
+</html>

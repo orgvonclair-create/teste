@@ -1,0 +1,10 @@
+# Netlify build config — Lovable TanStack Start (SSR via Nitro).
+# O Lovable gera o Nitro mirado em Cloudflare; aqui forçamos o preset "netlify"
+# para o build sair como função serverless do Netlify (SSR + rotas /api/public/*).
+[build]
+  command = "npm install && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NITRO_PRESET = "netlify"
+  NODE_VERSION = "22"
